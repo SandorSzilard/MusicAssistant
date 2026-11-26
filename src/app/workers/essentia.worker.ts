@@ -1,11 +1,23 @@
 /// <reference lib="webworker" />
 
 import Essentia from 'essentia.js/dist/essentia.js-core.es.js';
-import { EssentiaWASM } from 'essentia.js/dist/essentia-wasm.es.js';
 import EssentiaExtractor from 'essentia.js/dist/essentia.js-extractor.es.js';
 
-const essentia = new Essentia(EssentiaWASM);
-const extractor = new EssentiaExtractor(EssentiaWASM);
+const pendingMessages: MessageEvent[] = [];
+let handleMessage: ((event: MessageEvent) => void) | null = null;
+
+addEventListener('message', (event) => {
+  if (handleMessage) {
+    handleMessage(event);
+  } else {
+    pendingMessages.push(event);
+  }
+});
+
+const essentiaWasmUrl = new URL('/essentia-wasm.es.js', self.location.origin).href;
+const { EssentiaWASM: essentiaWasm } = await import(essentiaWasmUrl) as typeof import('essentia.js/dist/essentia-wasm.es.js');
+const essentia = new Essentia(essentiaWasm);
+const extractor = new EssentiaExtractor(essentiaWasm);
 
 type DetectedChord = {
   beatIndex: number;
@@ -127,7 +139,7 @@ function mergeConsecutiveChords(chords: DetectedChord[]): MergedDetectedChord[] 
   return merged;
 }
 
-addEventListener('message', ({ data }) => {
+function handleWorkerMessage({ data }: MessageEvent): void {
   if (data?.type === 'ping') {
     postMessage({
       type: 'ready',
@@ -650,4 +662,10 @@ addEventListener('message', ({ data }) => {
       });
     }
   }
-});
+}
+
+handleMessage = handleWorkerMessage;
+
+for (const event of pendingMessages.splice(0)) {
+  handleWorkerMessage(event);
+}

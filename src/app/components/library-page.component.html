@@ -1,0 +1,76 @@
+<section class="page" [class.drag-over]="isDragOver">
+  @if (isDragOver) {
+    <div class="library-drop-overlay">
+      <div class="library-drop-message">
+        <strong>Drop MP3/WAV or .musicassistant files</strong>
+        <span>Audio files will be imported. Music Assistant sets will be opened.</span>
+      </div>
+    </div>
+  }
+  <div class="page-head">
+    <div>
+      <h1>Library</h1>
+      <p>Local songs only. Source files are never modified.</p>
+    </div>
+    <button class="primary" (click)="importRequested.emit()">Import</button>
+  </div>
+
+  @if (!library.songs().length) {
+    <div class="empty">
+      <div class="empty-icon">♪</div>
+      <h2>No songs imported yet</h2>
+      <p>Import a local MP3 or WAV to verify file access, hashing and playback.</p>
+      <button class="primary" (click)="importRequested.emit()">Choose file</button>
+    </div>
+  } @else {
+    <div class="table">
+      <div class="tr th"><span>Song</span><span>BPM</span><span>Transpose</span><span>Analysis</span><span></span></div>
+      @for (song of library.songs(); track song.id) {
+        <div class="tr">
+          <span
+            ><strong>{{ song.fileName }}</strong
+            ><small>{{ song.fingerprintSha256?.slice(0, 16) }}...</small></span
+          >
+          <span>{{ song.bpm ? Math.round(song.bpm) : '-' }}</span>
+          <span>{{ song.transposeSemitones > 0 ? '+' : '' }}{{ song.transposeSemitones }}</span>
+          <span>
+            <div class="analysis-cell">
+              @if (song.analysisState === 'queued') {
+                <span class="analysis-badge queued"> queued </span>
+              }
+              @if (song.analysisState === 'analyzing') {
+                <div class="library-analysis-progress">
+                  <div class="library-analysis-progress-bar"></div>
+                </div>
+              }
+              @if (song.analysisState === 'awaiting-tuning-choice') {
+                <span class="analysis-badge tuning-choice">needs tuning choice</span>
+              }
+              @if (song.analysisState === 'ready') {
+                <span class="analysis-badge ready"> ready </span>
+              }
+              @if (song.analysisState === 'error') {
+                <span class="analysis-badge error"> error </span>
+              }
+              @if (song.analysisState === 'not-analyzed') {
+                <span class="analysis-badge"> not analyzed </span>
+              }
+            </div>
+          </span>
+          <span>
+            <button (click)="practiceRequested.emit(song)">Practice</button>
+            <button [disabled]="song.analysisState !== 'ready' || isSongInPlaylist(song.id)" (click)="addToLiveRequested.emit(song)">
+              @if (isSongInPlaylist(song.id)) {
+                In Live
+              } @else if (song.analysisState !== 'ready') {
+                Not ready
+              } @else {
+                Add to Live
+              }
+            </button>
+          </span>
+        </div>
+      }
+    </div>
+  }
+</section>

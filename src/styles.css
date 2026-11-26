@@ -17,3 +17,79 @@
 html, body { margin: 0; min-width: 960px; min-height: 100%; background: var(--bg); }
 button, input, select { font: inherit; }
 button { cursor: pointer; }
+
+app-root .page {
+  max-width: 1300px;
+  margin: 0 auto;
+}
+
+app-root .page-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+  align-items: flex-start;
+  margin-bottom: 22px;
+}
+
+app-root h1 {
+  margin: 0;
+  font-size: 27px;
+}
+
+app-root h2,
+app-root h3 {
+  margin-top: 0;
+}
+
+app-root p {
+  color: #b1bdc8;
+}
+
+app-root button {
+  border: 1px solid #344253;
+  background: #18222d;
+  color: #e9f0f5;
+  padding: 8px 12px;
+  border-radius: 8px;
+}
+
+app-root button:hover {
+  background: #213140;
+}
+
+app-root button.primary {
+  background: #1678ac;
+  border-color: #2498d1;
+  font-weight: 700;
+}
+
+app-root button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  background: #141c24;
+  border-color: #293542;
+  color: #6f7f8d;
+}
+
+app-root button:disabled:hover {
+  background: #141c24;
+}
+
+app-root .pill {
+  display: inline-flex;
+  padding: 4px 8px;
+  border-radius: 999px;
+  border: 1px solid #44515f;
+  color: #aeb9c4;
+  font-size: 12px;
+}
+
+app-root .pill.ok {
+  color: #b8f2ad;
+  border-color: #3f7441;
+  background: #18351f;
+}
+
+app-root .muted {
+  color: var(--muted);
+}

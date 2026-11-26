@@ -4,7 +4,10 @@ declare module 'essentia.js/dist/essentia.js-core.es.js' {
 }
 
 declare module 'essentia.js/dist/essentia-wasm.es.js' {
-  export const EssentiaWASM: any;
+  export const EssentiaWASM: {
+    EssentiaJS: new (isDebug?: boolean) => unknown;
+    [name: string]: unknown;
+  };
 }
 
 declare module 'essentia.js/dist/essentia.js-extractor.es.js' {

@@ -1,0 +1,147 @@
+:host {
+  display: block;
+}
+
+.settings-page {
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
+.settings-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.settings-sections {
+  display: grid;
+  gap: 14px;
+}
+
+.settings-card {
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--panel);
+}
+
+.settings-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 16px 18px;
+  border-bottom: 1px solid var(--line);
+}
+
+.settings-card-header h2 {
+  margin: 0;
+  font-size: 18px;
+}
+
+.settings-card-header p {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.settings-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  min-height: 54px;
+  padding: 12px 18px;
+  border-bottom: 1px solid var(--line);
+}
+
+.settings-row:last-child {
+  border-bottom: 0;
+}
+
+.settings-row strong {
+  display: block;
+}
+
+.settings-row p {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.settings-value {
+  flex: 0 0 auto;
+  color: #dce7ef;
+  font-weight: 700;
+  text-align: right;
+}
+
+.settings-note {
+  padding: 11px 18px;
+  color: var(--muted);
+  background: #0f161e;
+  font-size: 12px;
+}
+
+.settings-diagnostics-card {
+  opacity: 0.9;
+}
+
+.count-in-switch {
+  position: relative;
+  display: inline-flex;
+  width: 42px;
+  height: 24px;
+  cursor: pointer;
+}
+
+.count-in-switch input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.count-in-switch-track {
+  position: absolute;
+  inset: 0;
+  background: #344253;
+  border: 1px solid #4b5b6b;
+  border-radius: 999px;
+  transition:
+    background-color 140ms ease,
+    border-color 140ms ease;
+}
+
+.count-in-switch-track::after {
+  content: '';
+  position: absolute;
+  width: 18px;
+  height: 18px;
+  top: 2px;
+  left: 2px;
+  border-radius: 50%;
+  background: #d5dde4;
+  transition: transform 140ms ease;
+}
+
+.count-in-switch input:checked + .count-in-switch-track {
+  background: #1f7a4d;
+  border-color: #2fbd70;
+}
+
+.count-in-switch input:checked + .count-in-switch-track::after {
+  transform: translateX(18px);
+  background: white;
+}
+
+@media (max-width: 700px) {
+  .settings-card-header,
+  .settings-row {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .settings-value {
+    text-align: left;
+  }
+}

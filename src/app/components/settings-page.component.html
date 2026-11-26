@@ -1,0 +1,152 @@
+<section class="page settings-page">
+  <div class="page-head">
+    <div>
+      <h1>Settings</h1>
+      <p>Application preferences and hardware configuration.</p>
+    </div>
+
+    <div class="settings-header-actions">
+      <button (click)="refreshDevices.emit()">Refresh devices</button>
+      <button type="button" (click)="openShortcutHelp.emit()" title="Keyboard shortcuts">Shortcuts / Help</button>
+    </div>
+  </div>
+
+  <div class="settings-sections">
+    <section class="settings-card">
+      <div class="settings-card-header">
+        <div>
+          <h2>Audio</h2>
+          <p>Playback output used by Music Assistant.</p>
+        </div>
+      </div>
+
+      <div class="settings-row">
+        <div>
+          <strong>Output device</strong>
+          <p>Music Assistant uses the Windows default audio output device.</p>
+        </div>
+
+        <span class="settings-value">System default</span>
+      </div>
+
+      <div class="settings-note">Change the playback device from Windows Sound settings.</div>
+    </section>
+
+    <section class="settings-card">
+      <div class="settings-card-header">
+        <div>
+          <h2>MIDI</h2>
+          <p>Devices used for MIDI events during Practice and Live playback.</p>
+        </div>
+
+        <button type="button" (click)="openMidiSettings.emit()">Open MIDI settings</button>
+      </div>
+
+      <div class="settings-row">
+        <div>
+          <strong>Output</strong>
+          <p>Current MIDI output device.</p>
+        </div>
+
+        <span class="settings-value">{{ activeMidiDevice || 'None' }}</span>
+      </div>
+
+      <div class="settings-row">
+        <div>
+          <strong>Input</strong>
+          <p>Current MIDI input device.</p>
+        </div>
+
+        <span class="settings-value">{{ activeMidiInputDevice || 'None' }}</span>
+      </div>
+
+      <div class="settings-row">
+        <div>
+          <strong>Timing compensation</strong>
+          <p>Global offset for the active MIDI output device.</p>
+        </div>
+
+        <span class="settings-value">
+          @if (activeMidiDevice) {
+            {{ midiTimingCompensationMs }} ms
+          } @else {
+            —
+          }
+        </span>
+      </div>
+    </section>
+
+    <section class="settings-card">
+      <div class="settings-card-header">
+        <div>
+          <h2>Live</h2>
+          <p>Defaults used during Live playlist playback.</p>
+        </div>
+      </div>
+
+      <div class="settings-row">
+        <div>
+          <strong>Loudness matching</strong>
+          <p>Match playlist songs down to the quietest analyzed song.</p>
+        </div>
+
+        <label class="count-in-switch">
+          <input type="checkbox" [checked]="liveLoudnessMatchingEnabled" (change)="liveLoudnessMatchingChange.emit($any($event.target).checked)" />
+          <span class="count-in-switch-track"></span>
+        </label>
+      </div>
+    </section>
+
+    <section class="settings-card">
+      <div class="settings-card-header">
+        <div>
+          <h2>Help</h2>
+          <p>Keyboard controls and usage shortcuts.</p>
+        </div>
+
+        <button type="button" (click)="openShortcutHelp.emit()">Keyboard shortcuts</button>
+      </div>
+    </section>
+
+    <section class="settings-card settings-diagnostics-card">
+      <div class="settings-card-header">
+        <div>
+          <h2>Diagnostics</h2>
+          <p>Runtime and hardware information.</p>
+        </div>
+      </div>
+
+      <div class="settings-row">
+        <div>
+          <strong>Backend</strong>
+        </div>
+
+        <span class="settings-value">{{ isDesktop ? 'Desktop' : 'Browser preview' }}</span>
+      </div>
+
+      <div class="settings-row">
+        <div>
+          <strong>Version</strong>
+        </div>
+
+        <span class="settings-value">{{ version ?? 'Unknown' }}</span>
+      </div>
+
+      <div class="settings-row">
+        <div>
+          <strong>MIDI outputs detected</strong>
+        </div>
+
+        <span class="settings-value">{{ midiOutputsCount }}</span>
+      </div>
+
+      <div class="settings-row">
+        <div>
+          <strong>MIDI inputs detected</strong>
+        </div>
+
+        <span class="settings-value">{{ midiInputsCount }}</span>
+      </div>
+    </section>
+  </div>
+</section>

@@ -1,0 +1,699 @@
+      <section class="page practice-page">
+        @if (selectedSong(); as song) {
+          <div class="page-head">
+            <div>
+              <h1>{{ song.fileName }}</h1>
+              <p>Practice mode</p>
+            </div>
+            <div class="actions">
+              <!-- <button (click)="testRealRhythmAnalysis()" [disabled]="isAnalyzing()">
+            {{ isAnalyzing() ? 'Analyzing…' : 'Analyze rhythm' }}
+          </button>
+          <button (click)="testChordPreview()" [disabled]="isAnalyzing()">
+            Test chords
+          </button> -->
+              <button (click)="selectedSong() && analyzeSong(selectedSong()!)" [disabled]="isAnalyzing()">
+                {{ isAnalyzing() ? 'Analyzing…' : 'Analyze song' }}
+              </button>
+              <button (click)="saveSidecar()" [disabled]="isAnalyzing()" title="Save analysis and song settings">Save sidecar</button>
+            </div>
+          </div>
+
+          <audio #audio [src]="song.assetUrl" (timeupdate)="onAudioTime()" (loadedmetadata)="onMetadata()" (play)="onAudioPlay()" (pause)="onAudioPause()" (ended)="onAudioPause()"></audio>
+
+          @if (isAnalyzing()) {
+            <div class="analysis-status">
+              <span>Analyzing song...</span>
+
+              <div class="analysis-progress">
+                <div class="analysis-progress-bar"></div>
+              </div>
+            </div>
+
+            <div class="analysis-skeleton">
+              <div class="skeleton-wave">
+                @for (n of [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40]; track n) {
+                  <i [style.height.px]="18 + ((n * 17) % 52)"></i>
+                }
+              </div>
+
+              <div class="skeleton-timeline">
+                <span></span>
+                <span></span>
+                <span></span>
+                <span></span>
+                <span></span>
+              </div>
+            </div>
+          } @else {
+            <div class="practice-top-grid">
+              <div class="practice-info-card tuning-card">
+                <div class="info-label">TUNING</div>
+
+                <div class="tuning-row">
+                  <span>Detected</span>
+                  <strong>
+                    @if (selectedSong()?.detectedTuningHz != null) {
+                      {{ selectedSong()!.detectedTuningHz!.toFixed(1) }} Hz
+                    } @else {
+                      -
+                    }
+                  </strong>
+                </div>
+
+                <div class="tuning-row">
+                  <span>Source</span>
+                  <div class="tuning-source-control">
+                    <input
+                      type="number"
+                      step="1"
+                      min="400"
+                      max="480"
+                      [value]="sourceTuningInput() ?? Math.round(selectedSong()?.sourceTuningHz ?? 440)"
+                      (input)="onSourceTuningChange($event)"
+                      [class.invalid]="!sourceTuningIsValid()"
+                    />
+                    <strong>Hz</strong>
+                  </div>
+                </div>
+
+                @if (!sourceTuningIsValid()) {
+                  <div class="tuning-error">
+                    {{ sourceTuningError() }}
+                  </div>
+                }
+
+                <div class="tuning-actions">
+                  <button [disabled]="!sourceTuningIsValid() || isAnalyzing()" (click)="applyTuningCorrection()">Apply &amp; re-analyze</button>
+
+                  <button [disabled]="isAnalyzing()" (click)="resetTuning()">Reset tuning</button>
+                </div>
+              </div>
+
+              <div class="practice-option-card">
+                <label>Practice speed</label>
+                <div class="practice-option-main">
+                  <button (click)="setSpeed(practiceSpeed() - 5)" title="Decrease practice speed ([)">-5</button>
+                  <strong>{{ practiceSpeed() }}%</strong>
+                  <button (click)="setSpeed(practiceSpeed() + 5)" title="Increase practice speed (])">+5</button>
+                </div>
+                <button class="practice-reset-button" [disabled]="practiceSpeed() === 100" (click)="setSpeed(100)">Reset speed</button>
+              </div>
+
+              <div class="practice-option-card">
+                <label>Transpose</label>
+                <div class="practice-option-main">
+                  <button (click)="setTranspose(song.transposeSemitones - 1)">-</button>
+                  <strong>{{ song.transposeSemitones > 0 ? '+' : '' }}{{ song.transposeSemitones }}</strong>
+                  <button (click)="setTranspose(song.transposeSemitones + 1)">+</button>
+                </div>
+
+                <div class="formant-row">
+                  <span>Preserve voice</span>
+                  <label class="count-in-switch" title="Preserve vocal formants while transposing">
+                    <input type="checkbox" [checked]="formantCompensationEnabled()" (change)="onFormantCompensationToggle($event)" />
+                    <span class="count-in-switch-track"></span>
+                  </label>
+                </div>
+              </div>
+
+              <div class="practice-info-card practice-metrics">
+                <div class="bpm-metric">
+                  <label>BPM</label>
+
+                  <div class="bpm-control-row">
+                    <button
+                      class="bpm-scale-button"
+                      [class.active]="song.tempoMultiplier === 0.5"
+                      [disabled]="song.bpm == null"
+                      (click)="setTempoMultiplier(song.tempoMultiplier === 0.5 ? 1 : 0.5)"
+                      title="Half-time tempo"
+                    >
+                      ÷2
+                    </button>
+
+                    <strong>
+                      @if (effectiveBpm(song) != null) {
+                        {{ effectiveBpm(song)!.toFixed(effectiveBpm(song)! % 1 === 0 ? 0 : 1) }}
+                      } @else {
+                        -
+                      }
+                    </strong>
+
+                    <button
+                      class="bpm-scale-button"
+                      [class.active]="song.tempoMultiplier === 2"
+                      [disabled]="song.bpm == null"
+                      (click)="setTempoMultiplier(song.tempoMultiplier === 2 ? 1 : 2)"
+                      title="Double-time tempo"
+                    >
+                      ×2
+                    </button>
+                  </div>
+                </div>
+                <div>
+                  <label>Time</label>
+                  <strong>{{ formatTime(currentTime()) }}</strong>
+                </div>
+                <div class="base-pitch">
+                  <label>Base pitch</label>
+
+                  <strong>
+                    @if (song.tuningCorrectionEnabled) {
+                      440.0 Hz
+                    } @else if (song.sourceTuningHz != null) {
+                      {{ song.sourceTuningHz.toFixed(1) }} Hz
+                    } @else {
+                      -
+                    }
+                  </strong>
+                  @if (song.tuningCorrectionEnabled) {
+                    <small class="pitch-corrected"> corrected from {{ song.sourceTuningHz?.toFixed(1) }} Hz </small>
+                  }
+                </div>
+
+                <div class="song-key">
+                  <label>Key</label>
+
+                  <strong>
+                    {{ displaySongKey(song.keyTonic, song.keyMode, song.transposeSemitones) }}
+                  </strong>
+                </div>
+              </div>
+            </div>
+
+            <div
+              class="waveform"
+              [class.loop-active]="activeLoopSection()"
+              (pointerdown)="onWaveformPointerDown($event)"
+              (pointermove)="onWaveformPointerMove($event)"
+              (pointerup)="onWaveformPointerUp($event)"
+              (pointercancel)="onWaveformPointerUp($event)"
+              (contextmenu)="openWaveformContextMenu($event)"
+            >
+              <div class="wave-bars">
+                @for (peak of song.waveformPeaks; track $index) {
+                  <i [style.height.%]="8 + peak * 92"></i>
+                }
+              </div>
+
+              @for (section of song.sections; track section.id) {
+                @if (song.durationSeconds) {
+                  <div
+                    class="song-section-region"
+                    [style.left.%]="(section.startSeconds / song.durationSeconds) * 100"
+                    [style.width.%]="((section.endSeconds - section.startSeconds) / song.durationSeconds) * 100"
+                    [style.--section-color]="section.color"
+                  >
+                    <span>{{ section.label }}</span>
+                  </div>
+                }
+              }
+
+              @if (activeLoopSection(); as loopSection) {
+                @if (song.durationSeconds) {
+                  <div
+                    class="active-loop-region"
+                    [style.left.%]="(loopSection.startSeconds / song.durationSeconds) * 100"
+                    [style.width.%]="((loopSection.endSeconds - loopSection.startSeconds) / song.durationSeconds) * 100"
+                    [style.--section-color]="loopSection.color"
+                  >
+                    <div
+                      class="active-loop-wave-bars"
+                      [style.width.%]="(song.durationSeconds / (loopSection.endSeconds - loopSection.startSeconds)) * 100"
+                      [style.margin-left.%]="-(loopSection.startSeconds / (loopSection.endSeconds - loopSection.startSeconds)) * 100"
+                    >
+                      @for (peak of song.waveformPeaks; track $index) {
+                        <i [style.height.%]="8 + peak * 92"></i>
+                      }
+                    </div>
+                  </div>
+                }
+              }
+
+              @if (pendingSection(); as pending) {
+                @if (song.durationSeconds) {
+                  <div class="song-section-pending" [style.left.%]="(pending.startSeconds / song.durationSeconds) * 100">
+                    <span>{{ pending.label }}</span>
+                  </div>
+                }
+              }
+
+              @if (song.startSeconds != null && song.durationSeconds) {
+                <div class="song-boundary-marker start" [style.left.%]="(song.startSeconds / song.durationSeconds) * 100">
+                  <span>START</span>
+                </div>
+              }
+
+              @if (song.endSeconds != null && song.durationSeconds) {
+                <div class="song-boundary-marker end" [style.left.%]="(song.endSeconds / song.durationSeconds) * 100">
+                  <span>END</span>
+                </div>
+              }
+
+              <div class="playhead" [style.left.%]="song.durationSeconds ? (currentTime() / song.durationSeconds) * 100 : 0"></div>
+            </div>
+
+            <div class="chord-timeline">
+              <div class="chord-playhead"></div>
+
+              <div class="chord-strip" [style.transform]="chordTimelineTransform()">
+                @if (!displayedChords().length) {
+                  <div class="muted chord-empty">No chord analysis yet.</div>
+                }
+
+                @for (chord of displayedChords(); track chord.id) {
+                  <div
+                    class="chord"
+                    [class.selected]="selectedChordId() === chord.id"
+                    [class.active]="currentChord()?.id === chord.id"
+                    [class.loop-outside]="activeLoopSection() && !chordIsInsideActiveLoop(chord)"
+                    (click)="seekToChord(chord)"
+                    (dblclick)="editChordOnDoubleClick(chord)"
+                    (contextmenu)="openChordContextMenu($event, chord)"
+                    [style.flex-basis.px]="90 * (chord.spanBeats ?? 1)"
+                  >
+                    @if (selectedChordId() === chord.id) {
+                      <input
+                        class="chord-edit-input"
+                        [class.invalid]="chordEditInvalid()"
+                        [ngModel]="chordEditValue()"
+                        (ngModelChange)="chordEditValue.set($event); chordEditInvalid.set(false)"
+                        (focus)="selectInputText($event)"
+                        (keydown.enter)="saveChordEdit(chord)"
+                        (keydown.escape)="cancelChordEdit()"
+                        (blur)="saveChordEdit(chord)"
+                        autofocus
+                      />
+                    } @else {
+                      <strong>{{ chord.displayed }}</strong>
+                    }
+
+                    <small> beats {{ chord.beatIndex + 1 }}–{{ chord.beatIndex + (chord.spanBeats ?? 1) }} </small>
+                    @if (midiEventsForChord(chord.id).length > 0) {
+                      <small
+                        class="chord-midi-marker"
+                        [class.multiple]="midiEventsForChord(chord.id).length > 1"
+                        (click)="editMidiEventFromMarker($event, chord.id)"
+                        [title]="midiEventsForChord(chord.id).length === 1 ? 'Click to edit MIDI event' : 'Right-click chord to manage MIDI events'"
+                      >
+                        <span class="chord-midi-dot"></span>
+
+                        @if (midiEventsForChord(chord.id).length === 1) {
+                          MIDI · {{ midiEventsForChord(chord.id)[0].label || midiEventsForChord(chord.id)[0].kind }}
+                        } @else {
+                          MIDI · {{ midiEventsForChord(chord.id).length }} events
+                        }
+                      </small>
+                    }
+                  </div>
+                }
+              </div>
+            </div>
+
+            <input
+              class="timeline-scrollbar"
+              type="range"
+              min="0"
+              [max]="song.durationSeconds || 0"
+              step="0.01"
+              [value]="currentTime()"
+              [disabled]="isPlaying()"
+              (input)="onTimelineScrub($event)"
+              (change)="onTimelineScrubEnd($event)"
+              aria-label="Song position"
+            />
+          }
+
+          <div class="practice-chord-row">
+            <div class="chord-count-in">
+              <label>Count-in</label>
+              <div class="count-in-row">
+                <label class="count-in-switch" [class.disabled]="!canUseCountIn()" [title]="canUseCountIn() ? 'Enable / disable count-in (C)' : 'Analyze the song first to enable count-in'">
+                  <input type="checkbox" [checked]="countInEnabled()" [disabled]="!canUseCountIn()" (change)="onCountInToggle($event)" />
+                  <span class="count-in-switch-track"></span>
+                </label>
+
+                @if (countInEditing()) {
+                  <input
+                    class="count-in-edit"
+                    type="number"
+                    min="1"
+                    max="16"
+                    [ngModel]="countInEditValue()"
+                    (ngModelChange)="countInEditValue.set($event)"
+                    (keydown.enter)="saveCountInEdit()"
+                    (keydown.escape)="cancelCountInEdit()"
+                    (blur)="saveCountInEdit()"
+                  />
+                } @else {
+                  <button class="count-in-value" [disabled]="!canUseCountIn() || !countInEnabled()" (click)="startCountInEdit()" title="Click to change count-in">
+                    {{ countInClicks() }}
+                  </button>
+                }
+              </div>
+            </div>
+
+            <div class="hero-chord">
+              <label>Current chord</label>
+              <strong>{{ currentChord()?.displayed ?? '-' }}</strong>
+            </div>
+
+            <div class="hero-chord secondary">
+              <label>Next chord</label>
+              <strong>{{ nextChord()?.displayed ?? '-' }}</strong>
+            </div>
+
+            <div class="hero-chord secondary loop-section-card">
+              <label>Loop section</label>
+
+              @if (song.sections.length) {
+                <div class="loop-section-options">
+                  @for (section of song.sections; track section.id) {
+                    <button
+                      type="button"
+                      class="loop-section-chip"
+                      [class.active]="activeLoopSectionId() === section.id"
+                      [style.--section-color]="section.color"
+                      (click)="setLoopSection(activeLoopSectionId() === section.id ? null : section.id)"
+                    >
+                      <span class="loop-section-dot"></span>
+                      {{ section.label }}
+                    </button>
+                  }
+                </div>
+
+                @if (activeLoopSection()) {
+                  <div class="loop-section-count-in">
+                    <span>Count-in</span>
+
+                    <label class="count-in-switch" [class.disabled]="!canUseCountIn()" title="Count in before every loop repetition">
+                      <input type="checkbox" [checked]="loopCountInEnabled()" [disabled]="!canUseCountIn()" (change)="onLoopCountInToggle($event)" />
+                      <span class="count-in-switch-track"></span>
+                    </label>
+
+                    <span class="loop-section-count">{{ countInClicks() }} clicks</span>
+                  </div>
+                }
+              } @else {
+                <strong>-</strong>
+              }
+            </div>
+          </div>
+
+          <div class="transport-stack panel">
+            <div class="transport-row">
+              <button class="transport-icon" (click)="restartPlayback()" title="Restart from beginning (R)" aria-label="Restart from beginning">⟳</button>
+
+              <button class="transport-icon transport-main" [class.playing]="isPlaying()" (click)="togglePlay()" title="Play / Pause (Space)" aria-label="Play / Pause (Space)">⏯</button>
+
+              <button class="transport-icon" (click)="stopPlayback()" title="Stop (Enter)" aria-label="Stop">⏹</button>
+            </div>
+          </div>
+        } @else {
+          <div class="empty">
+            <h2>No song selected</h2>
+            <button class="primary" (click)="tab.set('library')">Open Library</button>
+          </div>
+        }
+      </section>
+
+  @if (chordContextMenu(); as menu) {
+    <div class="chord-context-menu" [style.left.px]="menu.x" [style.top.px]="menu.top" [style.bottom.px]="menu.bottom" (click)="$event.stopPropagation()">
+      <button (click)="setChordToNoChord()">Set N.C.</button>
+      <button (click)="editChordFromContextMenu()">Edit chord…</button>
+
+      <div class="context-menu-divider"></div>
+
+      @for (midi of midiEventsForChord(menu.chordId); track midi.id) {
+        <button (click)="editMidiEventFromContextMenu(midi.id)">Edit MIDI · {{ midi.label || midi.kind }}</button>
+
+        <button class="danger" (click)="deleteMidiEvent(midi.id)">Delete MIDI · {{ midi.label || midi.kind }}</button>
+      }
+
+      <button (click)="addMidiEventFromContextMenu()">Add MIDI event…</button>
+
+      <div class="context-menu-divider"></div>
+
+      <button (click)="closeChordContextMenu()">Cancel</button>
+    </div>
+  }
+
+  @if (waveformContextMenu(); as menu) {
+    <div class="chord-context-menu waveform-context-menu" [style.left.px]="menu.x" [style.top.px]="menu.y" (click)="$event.stopPropagation()">
+      <div class="context-menu-time">{{ formatTime(menu.timeSeconds) }}</div>
+
+      @if (pendingSection(); as pending) {
+        <button (click)="finishPendingSection()">End section "{{ pending.label }}" at playhead</button>
+        <button (click)="cancelPendingSection()">Cancel section "{{ pending.label }}"</button>
+      } @else if (waveformMenuPage() === 'boundaries') {
+        <button class="context-menu-back" (click)="waveformMenuPage.set('main')">‹ Back</button>
+
+        <div class="context-menu-divider"></div>
+
+        <button (click)="setSongStartFromContextMenu()">Set start at playhead</button>
+        <button (click)="setSongEndFromContextMenu()">Set end at playhead</button>
+
+        @if (selectedSong()?.startSeconds != null) {
+          <button (click)="clearSongStart()">Clear start</button>
+        }
+
+        @if (selectedSong()?.endSeconds != null) {
+          <button (click)="clearSongEnd()">Clear end</button>
+        }
+      } @else {
+        <button (click)="startSectionCreation()">Add section at playhead…</button>
+
+        <button class="context-menu-submenu" (click)="waveformMenuPage.set('boundaries')">
+          <span>Song boundaries</span>
+          <span>›</span>
+        </button>
+
+        @if (menu.sectionId) {
+          @if (selectedSong()?.sections; as sections) {
+            @for (section of sections; track section.id) {
+              @if (section.id === menu.sectionId) {
+                <div class="context-menu-divider"></div>
+
+                <button (click)="editSectionFromContextMenu()">Edit section "{{ section.label }}"…</button>
+                <button class="danger" (click)="deleteSectionFromContextMenu()">Delete section "{{ section.label }}"</button>
+              }
+            }
+          }
+        }
+      }
+
+      <div class="context-menu-divider"></div>
+
+      <button (click)="closeWaveformContextMenu()">Cancel</button>
+    </div>
+  }
+
+  @if (midiEventDialog(); as dialog) {
+    <div class="modal-backdrop" (pointerdown)="closeMidiDialogFromBackdrop($event)">
+      <div class="section-create-dialog panel midi-event-dialog" (click)="$event.stopPropagation()">
+        <h3>{{ dialog.eventId ? 'Edit MIDI event' : 'Add MIDI event' }}</h3>
+
+        <p>The event will be anchored to the selected chord.</p>
+
+        <div class="midi-paste-box">
+          <label>
+            Paste MIDI event
+
+            <textarea
+              rows="3"
+              [ngModel]="midiPasteInput()"
+              (ngModelChange)="midiPasteInput.set($event); midiPasteError.set('')"
+              placeholder='{"kind":"control-change","channel":1,"data1":80,"data2":127}'
+            ></textarea>
+          </label>
+
+          <button type="button" (click)="applyPastedMidiEvent()">Apply pasted event</button>
+
+          @if (midiPasteError()) {
+            <small class="error">{{ midiPasteError() }}</small>
+          }
+        </div>
+
+        <label>
+          Type
+          <select [ngModel]="midiEventKindInput()" (ngModelChange)="midiEventKindInput.set($event)">
+            <option value="program-change">Program Change</option>
+            <option value="control-change">Control Change</option>
+            <option value="raw">Raw MIDI</option>
+          </select>
+        </label>
+
+        <label>
+          Device
+          <select [ngModel]="midiEventDeviceInput()" (ngModelChange)="midiEventDeviceInput.set($event)">
+            <option value="">Current selected MIDI device</option>
+
+            @for (device of midiOutputs(); track device) {
+              <option [value]="device">{{ device }}</option>
+            }
+          </select>
+        </label>
+
+        <label>
+          Channel
+          <input type="number" min="1" max="16" [ngModel]="midiEventChannelInput()" (ngModelChange)="midiEventChannelInput.set($event)" />
+        </label>
+
+        @if (midiEventKindInput() === 'program-change') {
+          <label>
+            Program
+            <input type="number" min="0" max="127" [ngModel]="midiEventData1Input()" (ngModelChange)="midiEventData1Input.set($event)" />
+          </label>
+        }
+
+        @if (midiEventKindInput() === 'control-change') {
+          <label>
+            Controller
+            <input type="number" min="0" max="127" [ngModel]="midiEventData1Input()" (ngModelChange)="midiEventData1Input.set($event)" />
+          </label>
+
+          <label>
+            Value
+            <input type="number" min="0" max="127" [ngModel]="midiEventData2Input()" (ngModelChange)="midiEventData2Input.set($event)" />
+          </label>
+        }
+
+        @if (midiEventKindInput() === 'raw') {
+          <label>
+            Raw bytes
+            <input type="text" [value]="formatMidiBytes(midiEventRawBytesInput())" readonly />
+          </label>
+        }
+
+        <label>
+          Offset (ms)
+          <input type="number" [ngModel]="midiEventOffsetInput()" (ngModelChange)="midiEventOffsetInput.set($event)" />
+        </label>
+
+        <label>
+          Label
+          <input
+            type="text"
+            placeholder="e.g. Solo patch"
+            [ngModel]="midiEventLabelInput()"
+            (ngModelChange)="midiEventLabelInput.set($event)"
+            (keydown.enter)="saveMidiEventDialog()"
+            (keydown.escape)="cancelMidiEventDialog()"
+          />
+        </label>
+
+        <div class="section-dialog-actions">
+          <button (click)="cancelMidiEventDialog()">Cancel</button>
+          <button class="primary" (click)="saveMidiEventDialog()">
+            {{ dialog.eventId ? 'Save changes' : 'Add MIDI event' }}
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+
+  @if (sectionCreateDialog(); as dialog) {
+    <div class="modal-backdrop" (click)="cancelSectionCreation()">
+      <div class="section-create-dialog panel" (click)="$event.stopPropagation()">
+        <h3>New section</h3>
+
+        <p>Starts at {{ formatTime(dialog.startSeconds) }}</p>
+
+        <label>
+          Name
+          <input
+            type="text"
+            [ngModel]="sectionNameInput()"
+            (ngModelChange)="sectionNameInput.set($event)"
+            (keydown.enter)="confirmSectionCreation()"
+            (keydown.escape)="cancelSectionCreation()"
+            autofocus
+          />
+        </label>
+
+        <div class="section-color-field">
+          <label>Color</label>
+
+          <div class="section-color-palette">
+            @for (color of sectionColors; track color) {
+              <button
+                type="button"
+                class="section-color-swatch"
+                [class.selected]="sectionColorInput() === color"
+                [style.background]="color"
+                (click)="sectionColorInput.set(color)"
+                [attr.aria-label]="'Select color ' + color"
+              ></button>
+            }
+          </div>
+        </div>
+
+        <div class="section-dialog-actions">
+          <button (click)="cancelSectionCreation()">Cancel</button>
+          <button class="primary" (click)="confirmSectionCreation()">Start section</button>
+        </div>
+      </div>
+    </div>
+  }
+
+  @if (sectionEditDialog()) {
+    <div class="modal-backdrop">
+      <div class="section-create-dialog panel" (click)="$event.stopPropagation()">
+        <h3>Edit section</h3>
+
+        <label>
+          Name
+          <input type="text" [ngModel]="sectionNameInput()" (ngModelChange)="sectionNameInput.set($event)" (keydown.enter)="saveSectionEdit()" (keydown.escape)="cancelSectionEdit()" autofocus />
+        </label>
+
+        <div class="section-color-field">
+          <label>Color</label>
+
+          <div class="section-color-palette">
+            @for (color of sectionColors; track color) {
+              <button
+                type="button"
+                class="section-color-swatch"
+                [class.selected]="sectionColorInput() === color"
+                [style.background]="color"
+                (click)="sectionColorInput.set(color)"
+                [attr.aria-label]="'Select color ' + color"
+              ></button>
+            }
+          </div>
+        </div>
+
+        <div class="section-dialog-actions">
+          <button (click)="cancelSectionEdit()">Cancel</button>
+          <button class="primary" (click)="saveSectionEdit()">Save changes</button>
+        </div>
+      </div>
+    </div>
+  }
+
+  @if (tuningChoicePrompt(); as choice) {
+    <div class="tuning-choice-backdrop">
+      <div class="tuning-choice-dialog">
+        <div class="tuning-choice-title">Analysis needs your input</div>
+
+        <div class="tuning-choice-song">{{ choice.fileName }}</div>
+
+        <div class="tuning-choice-reading">
+          <strong>{{ choice.detectedHz.toFixed(1) }} Hz</strong>
+
+          <span>
+            {{ choice.tuningCents >= 0 ? '+' : '' }}{{ choice.tuningCents.toFixed(1) }}
+            cents from A=440
+          </span>
+        </div>
+
+        <p>Automatic analysis is paused for this song. Keep the recording at its detected tuning, or correct playback to A=440.</p>
+
+        <div class="tuning-choice-actions">
+          <button (click)="keepOriginalTuning()">Keep original</button>
+          <button class="primary" (click)="tuneTo440()">Tune to 440</button>
+        </div>
+      </div>
+    </div>
+  }

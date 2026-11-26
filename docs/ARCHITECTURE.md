@@ -1,15 +1,22 @@
 # Architecture
 
-This describes the working architecture at the end of Chapter 8. Chapter 9 is expected to improve file/component boundaries without changing these behaviors.
+This describes the working architecture after the Chapter 9 refactor. The Chapter 8 behavior contracts remain unchanged.
 
 ```text
 Angular UI
-  |-- Library / Practice / Live / MIDI / Settings
-  |-- typed domain state
+  |-- AppComponent application shell / keyboard and tab coordinator
+  |-- LibraryPageComponent / PracticePageComponent / LivePageComponent
+  |-- MidiPageComponent / SettingsPageComponent
+  |-- feature state and orchestration services
   |-- sidecar / playlist / settings services
-  |-- Essentia Web Worker -------------------+
-  |-- Signalsmith DSP playback               |
-  |-- Practice + Live MIDI schedulers        |
+  |-- AnalysisOrchestratorService ------------+
+  |     |-- decoded analysis audio             |
+  |     |-- typed Essentia worker session      |
+  |     |-- analysis queue / tuning / loudness |
+  |-- PracticePlaybackService                 |
+  |-- LivePlaybackService / LivePlaylistService
+  |-- MidiSchedulerService / MidiDeviceService
+  |-- Signalsmith DSP playback                 |
   |                                          |
   +---- Tauri IPC ---------------------------|-----------+
                                              |           |
@@ -21,6 +28,20 @@ Rust backend                                 |           |
   |-- audio-output enumeration via CPAL                  |
   +------------------------------------------------------+
 ```
+
+## Frontend component and analysis boundaries
+
+`AppComponent` is the application shell and top-level coordinator. It handles app-wide navigation, keyboard shortcuts, native file-drop integration, and connects imported songs to feature workflows. The Library, Practice, Live, MIDI, and Settings pages have dedicated components with page markup and styles kept alongside the component.
+
+`LibraryService` owns the song collection and selection. `LibraryImportService` coordinates local file hashing, `.masidecar` loading, and automatic analysis queueing without modifying source audio. `SidecarService`, `SettingsService`, and `BackendService` retain their persistence and platform boundaries.
+
+`PracticeStateService` and `PracticePlaybackService` own Practice state and playback/count-in orchestration. `PracticePageComponent` owns Practice UI interactions and its page markup. `AnalysisOrchestratorService` owns analysis queueing, tuning choice, full/loudness analysis coordination, sidecar saves, and stale-result protection. Analysis decoding and Essentia worker communication remain separate from DSP playback.
+
+The analysis worker dynamically loads the package's local `essentia-wasm.es.js` ESM asset and queues incoming requests until Essentia initialization completes. This keeps WASM analysis in the worker and works without a network dependency.
+
+`LiveStateService` owns playlist and playback state. `LivePlaybackService` owns sequence progression, clocks, count-in and Live MIDI scheduling. `LivePlaylistService` owns set persistence, recovery/relink operations, and playlist settings. `LivePageComponent` owns Live presentation and page-level interactions.
+
+`MidiSchedulerService` shares beat-anchored scheduling rules between Practice and Live. The trigger remains `anchor time + signed event offset + selected-device timing compensation`. `MidiDeviceService` owns device selection, monitoring, event sending, and persisted MIDI device settings.
 
 ## Current playback boundary
 
@@ -130,6 +151,6 @@ Persisted separately through `SettingsService` and Rust-provided portable settin
 - source audio remains immutable;
 - Live should validate/prepare risky work before performance when practical.
 
-## Structural debt at Chapter 8 boundary
+## Remaining structural debt
 
-The root component/template/styles have grown too large and contain multiple feature responsibilities. Chapter 9 should extract coherent services/components/helpers incrementally while preserving the behavior contracts in `docs/BEHAVIOR_CONTRACTS.md`.
+`PracticePageComponent` and `LivePlaybackService` remain the largest feature files and may need further decomposition. The root stylesheet now contains shared shell and cross-page styles; page-specific Practice, Live, and Library rules are colocated with their page components. Any further decomposition must preserve the behavior contracts in `docs/BEHAVIOR_CONTRACTS.md`.

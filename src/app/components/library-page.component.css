@@ -1,0 +1,150 @@
+:host {
+  display: block;
+}
+
+.empty-icon {
+  font-size: 58px;
+  color: var(--accent);
+}
+
+.table {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.tr {
+  display: grid;
+  grid-template-columns: minmax(300px, 1fr) 100px 120px 150px 100px;
+  gap: 12px;
+  align-items: center;
+  padding: 13px 15px;
+  background: #111820;
+  border-top: 1px solid #222d39;
+}
+
+.tr:first-child {
+  border-top: 0;
+}
+
+.tr.th {
+  background: #17212c;
+  color: #8fa0af;
+  font-size: 12px;
+  text-transform: uppercase;
+}
+
+.tr span:first-child {
+  display: flex;
+  flex-direction: column;
+}
+
+.tr small {
+  color: #657586;
+  margin-top: 3px;
+}
+
+.analysis-cell {
+  width: 150px;
+  min-height: 26px;
+  display: flex;
+  align-items: center;
+}
+
+.analysis-badge {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 4px 9px;
+  border: 1px solid #3a4b5b;
+  border-radius: 999px;
+  font-size: 12px;
+  line-height: 16px;
+}
+
+.analysis-badge.queued {
+  color: #9eb0bf;
+  border-color: #3d4c59;
+  background: #111922;
+}
+
+.analysis-badge.ready {
+  color: #b8ffbd;
+  border-color: #287a35;
+  background: #15391d;
+}
+
+.analysis-badge.error {
+  color: #ffb4b4;
+  border-color: #8a3535;
+  background: #391919;
+}
+
+.analysis-badge.tuning-choice {
+  color: #ffe0a3;
+  border-color: #8a6a2c;
+  background: #332713;
+}
+
+.library-analysis-progress {
+  position: relative;
+  width: 100%;
+  height: 24px;
+  overflow: hidden;
+  border: 1px solid #38546a;
+  border-radius: 999px;
+  background: #101923;
+}
+
+.library-analysis-progress::before {
+  content: 'analyzing';
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  padding-left: 9px;
+  font-size: 12px;
+  color: #d3ebf8;
+}
+
+.library-analysis-progress-bar {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 45%;
+  border-radius: inherit;
+  background: rgba(55, 174, 226, 0.35);
+  animation: library-analysis-slide 1.15s ease-in-out infinite;
+}
+  .library-analysis-progress-bar {
+    left: 0;
+    width: 100%;
+    animation: none;
+  }
+
+.page.drag-over {
+  background: rgba(45, 160, 210, 0.04);
+  outline: 2px dashed rgba(70, 180, 225, 0.55);
+  outline-offset: -8px;
+}
+
+.library-drop-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  pointer-events: none;
+
+  background: rgba(8, 14, 20, 0.68);
+  backdrop-filter: blur(2px);
+  border-radius: 10px;
+}
+
+.tr button:disabled {
+  opacity: 0.65;
+  cursor: default;
+}

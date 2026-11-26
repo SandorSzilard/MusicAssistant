@@ -1,0 +1,289 @@
+<section class="page live-page">
+  <div class="page-head live-page-head">
+    <div>
+      <h1>Live</h1>
+      <p>Prepared playlist playback using saved song settings.</p>
+    </div>
+
+    <div class="actions">
+      <button (click)="openLivePlaylist()">Open Set</button>
+      <button [disabled]="!playlist().entries.length" (click)="saveLivePlaylist()">Save Set</button>
+      <button class="primary" (click)="startLivePlaylist()">Start Live</button>
+      <button [disabled]="livePlaybackState() === 'ready'" (click)="stopLivePlayback()">Stop</button>
+    </div>
+  </div>
+
+  <div class="live-playback-status">
+    <span>
+      State:
+      <strong>{{ livePlaybackState() }}</strong>
+    </span>
+
+    @if (liveCurrentSong(); as song) {
+      <span>
+        Current:
+        <strong>{{ song.fileName }}</strong>
+      </span>
+    }
+
+    @if (liveNextSong(); as nextSong) {
+      <span>
+        Next:
+        <strong>{{ nextSong.fileName }}</strong>
+      </span>
+    }
+
+    @if (liveCountdownSeconds() !== null) {
+      <span class="live-countdown">
+        Next song in:
+        <strong>{{ liveCountdownSeconds() }}s</strong>
+      </span>
+    }
+  </div>
+
+  @if (liveCurrentSong(); as liveSong) {
+    <div class="live-performance-view">
+      <div class="waveform live-waveform">
+        <div class="wave-bars">
+          @for (peak of liveSong.waveformPeaks; track $index) {
+            <i [style.height.%]="8 + peak * 92"></i>
+          }
+        </div>
+
+        @for (section of liveSong.sections; track section.id) {
+          @if (liveSong.durationSeconds) {
+            <div
+              class="song-section-region"
+              [style.left.%]="(section.startSeconds / liveSong.durationSeconds) * 100"
+              [style.width.%]="((section.endSeconds - section.startSeconds) / liveSong.durationSeconds) * 100"
+              [style.--section-color]="section.color"
+            >
+              <span>{{ section.label }}</span>
+            </div>
+          }
+        }
+
+        @if (liveSong.startSeconds != null && liveSong.durationSeconds) {
+          <div class="song-boundary-marker start" [style.left.%]="(liveSong.startSeconds / liveSong.durationSeconds) * 100">
+            <span>START</span>
+          </div>
+        }
+
+        @if (liveSong.endSeconds != null && liveSong.durationSeconds) {
+          <div class="song-boundary-marker end" [style.left.%]="(liveSong.endSeconds / liveSong.durationSeconds) * 100">
+            <span>END</span>
+          </div>
+        }
+
+        <div class="playhead" [style.left.%]="liveSong.durationSeconds ? (liveCurrentTime() / liveSong.durationSeconds) * 100 : 0"></div>
+      </div>
+
+      <div class="chord-timeline live-chord-timeline">
+        <div class="chord-playhead"></div>
+
+        <div class="chord-strip" [style.transform]="liveChordTimelineTransform(liveSong)">
+          @for (chord of liveDisplayedChords(liveSong); track chord.id) {
+            <div class="chord" [class.active]="liveCurrentChord(liveSong)?.id === chord.id" [style.flex-basis.px]="90 * (chord.spanBeats ?? 1)">
+              <strong>{{ chord.displayed }}</strong>
+              <small>beats {{ chord.beatIndex + 1 }}–{{ chord.beatIndex + (chord.spanBeats ?? 1) }}</small>
+            </div>
+          }
+        </div>
+      </div>
+
+      <div class="live-midi-timeline">
+        <div class="live-midi-playhead"></div>
+
+        <div class="live-midi-strip" [style.transform]="liveChordTimelineTransform(liveSong)">
+          @for (midi of liveSong.midiEvents; track midi.id) {
+            <div class="live-midi-event" [style.left.px]="liveMidiEventLeftPx(liveSong, midi)">
+              <span class="live-midi-dot"></span>
+              <strong>{{ midi.label || 'MIDI' }}</strong>
+              <small>{{ midi.kind }}</small>
+            </div>
+          }
+
+          @if (!liveSong.midiEvents.length) {
+            <div class="live-midi-empty">No MIDI events</div>
+          }
+        </div>
+      </div>
+
+      <input class="timeline-scrollbar" type="range" min="0" [max]="liveSong.durationSeconds || 0" step="0.01" [value]="liveCurrentTime()" disabled aria-label="Live song position" />
+    </div>
+  }
+
+  <div class="live-settings panel">
+    <div class="live-setting-group">
+      <label>Pause between songs</label>
+
+      <label class="count-in-switch">
+        <input type="checkbox" [checked]="playlist().pauseBetweenSongsEnabled" (change)="setPlaylistPauseEnabled($any($event.target).checked)" />
+
+        <span class="count-in-switch-track"></span>
+      </label>
+    </div>
+
+    <div class="live-setting-group">
+      <label>Pause duration</label>
+
+      <div class="live-pause-duration">
+        <input
+          type="number"
+          min="0"
+          max="300"
+          step="1"
+          [disabled]="!playlist().pauseBetweenSongsEnabled"
+          [ngModel]="playlist().pauseBetweenSongsSeconds"
+          (ngModelChange)="setPlaylistPauseSeconds($event)"
+        />
+
+        <span>seconds</span>
+      </div>
+    </div>
+
+    <div class="live-setting-group">
+      <label>Loudness target</label>
+
+      @if (liveLoudnessTargetLufs(); as target) {
+        <strong>{{ target.toFixed(1) }} LUFS</strong>
+      } @else {
+        <strong>No analyzed songs</strong>
+      }
+    </div>
+
+    <div class="live-setting-group">
+      <label>Loudness matching</label>
+
+      <label class="count-in-switch">
+        <input type="checkbox" [checked]="liveLoudnessMatchingEnabled()" (change)="setLiveLoudnessMatchingEnabled($any($event.target).checked)" />
+
+        <span class="count-in-switch-track"></span>
+      </label>
+    </div>
+  </div>
+
+  @if (!playlist().entries.length) {
+    <div class="empty">
+      <h2>No songs in Live playlist</h2>
+
+      <p>Add analyzed songs from the Library.</p>
+
+      <button class="primary" (click)="tab.set('library')">Open Library</button>
+    </div>
+  } @else {
+    <div #livePlaylist class="live-playlist" cdkDropList cdkDropListOrientation="vertical" [cdkDropListData]="playlist().entries" (cdkDropListDropped)="reorderPlaylist($event)">
+      @for (item of playlistSongs(); track item.entry.id; let index = $index) {
+        <div
+          class="live-playlist-row"
+          cdkDrag
+          [attr.data-live-entry-id]="item.entry.id"
+          cdkDragLockAxis="y"
+          [class.active]="liveActiveEntryId() === item.entry.id"
+          (dblclick)="startLivePlaylistFrom(index)"
+        >
+          <div class="live-position">
+            <span class="live-drag-handle" cdkDragHandle title="Drag to reorder" aria-label="Drag to reorder"> ⋮⋮ </span>
+
+            <span>
+              {{ index + 1 }}
+            </span>
+          </div>
+
+          <div class="live-song-main">
+            <strong>
+              {{ item.song?.fileName ?? item.entry.fileName ?? 'Missing song' }}
+            </strong>
+
+            @if (item.song) {
+              <div class="live-song-meta">
+                <span>BPM: {{ effectiveBpm(item.song)?.toFixed(effectiveBpm(item.song)! % 1 === 0 ? 0 : 1) }}</span>
+                <span>Transpose: {{ item.song.transposeSemitones > 0 ? '+' : '' }}{{ item.song.transposeSemitones }}</span>
+                <span>Key: {{ displaySongKey(item.song.keyTonic, item.song.keyMode, item.song.transposeSemitones) }}</span>
+                @if (hasValidLoudness(item.song)) {
+                  <span> LUFS: {{ item.song.loudnessLufs!.toFixed(1) }} </span>
+
+                  @if (liveLoudnessGainDb(item.song); as gainDb) {
+                    <span> Gain: {{ gainDb.toFixed(1) }} dB </span>
+                  } @else if (liveLoudnessGainDb(item.song) === 0) {
+                    <span>Gain: 0.0 dB</span>
+                  }
+                } @else {
+                  <span>LUFS: unavailable</span>
+                  <span>Gain: 0.0 dB</span>
+                }
+              </div>
+            } @else {
+              <div class="live-song-meta">
+                <span>Offline</span>
+              </div>
+            }
+          </div>
+
+          <div class="live-count-in">
+            <label>Count-in</label>
+
+            @if (item.song) {
+              <strong>
+                {{ effectiveCountInEnabled(item.entry, item.song) ? effectiveCountInClicks(item.entry, item.song) : 'Off' }}
+              </strong>
+            } @else {
+              <strong>Offline</strong>
+            }
+          </div>
+
+          <div class="live-pause-after">
+            <label>Pause after</label>
+
+            <div class="live-pause-after-control">
+              <label class="count-in-switch">
+                <input
+                  type="checkbox"
+                  [checked]="item.entry.pauseAfterEnabled ?? true"
+                  [disabled]="!playlist().pauseBetweenSongsEnabled"
+                  (change)="setEntryPauseAfterEnabled(item.entry.id, $any($event.target).checked)"
+                />
+
+                <span class="count-in-switch-track"></span>
+              </label>
+
+              <span>
+                @if (playlist().pauseBetweenSongsEnabled && (item.entry.pauseAfterEnabled ?? true)) {
+                  {{ effectivePauseSeconds(item.entry) }}s
+                } @else {
+                  Off
+                }
+              </span>
+            </div>
+          </div>
+
+          <div class="live-row-actions" (dblclick)="$event.stopPropagation()">
+            @if (item.song) {
+              <button (click)="selectSong(item.song)">Practice</button>
+            } @else {
+              <button (click)="locateOfflinePlaylistSong(item.entry)">Locate…</button>
+            }
+
+            <button (click)="removeSongFromPlaylist(item.entry.id)">Remove</button>
+          </div>
+        </div>
+      }
+    </div>
+  }
+</section>
+
+@if (recoveryDialog(); as dialog) {
+  <div class="tuning-choice-backdrop">
+    <div class="tuning-choice-dialog">
+      <div class="tuning-choice-title">{{ dialog.title }}</div>
+      <p>{{ dialog.message }}</p>
+      <div class="tuning-choice-actions">
+        @if (dialog.kind === 'missing' && dialog.entry) {
+          <button (click)="closeRecoveryDialog(); locateOfflinePlaylistSong(dialog.entry)">Locate file</button>
+          <button (click)="searchFolderForOfflineSong(dialog.entry)">Search folder</button>
+        }
+        <button class="primary" (click)="closeRecoveryDialog()">Close</button>
+      </div>
+    </div>
+  </div>
+}

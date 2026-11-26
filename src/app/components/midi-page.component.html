@@ -1,0 +1,176 @@
+<section class="page midi-page">
+  <div class="page-head">
+    <div>
+      <h1>MIDI</h1>
+      <p>Configure MIDI hardware and verify messages before using them in Practice or Live.</p>
+    </div>
+
+    <button (click)="refreshDevices()">Refresh devices</button>
+  </div>
+
+  <div class="midi-sections">
+    <section class="midi-card">
+      <div class="midi-card-header">
+        <div>
+          <h2>MIDI output</h2>
+          <p>Device used for scheduled MIDI events during Practice and Live playback.</p>
+        </div>
+      </div>
+
+      <div class="midi-settings-grid">
+        <label class="midi-field">
+          <span>Output device</span>
+
+          <select [ngModel]="activeMidiDevice()" (ngModelChange)="setOutputDevice($event)">
+            <option value="">None</option>
+
+            @for (device of midiOutputs(); track device) {
+              <option [value]="device">{{ device }}</option>
+            }
+          </select>
+        </label>
+
+        <label class="midi-field">
+          <span>Timing compensation</span>
+
+          <div class="midi-field-with-unit">
+            <input type="number" [disabled]="!activeMidiDevice()" [ngModel]="timingCompensationMs()" (ngModelChange)="setTimingCompensation($event)" />
+
+            <span>ms</span>
+          </div>
+        </label>
+      </div>
+
+      <div class="midi-info-note">Timing compensation shifts all scheduled events for the selected output device.</div>
+    </section>
+
+    <section class="midi-card">
+      <div class="midi-card-header">
+        <div>
+          <h2>Output test bench</h2>
+          <p>Send a MIDI message immediately to verify the selected hardware.</p>
+        </div>
+      </div>
+
+      <div class="midi-test-grid">
+        <label class="midi-field">
+          <span>Message type</span>
+
+          <select [(ngModel)]="midiKind">
+            <option value="program-change">Program Change</option>
+            <option value="control-change">Control Change</option>
+            <option value="raw">Raw / test</option>
+          </select>
+        </label>
+
+        <label class="midi-field">
+          <span>Channel</span>
+
+          <input type="number" min="1" max="16" [(ngModel)]="midiChannel" />
+        </label>
+
+        <label class="midi-field">
+          <span>{{ midiKind === 'program-change' ? 'Program' : 'Data / Controller' }}</span>
+
+          <input type="number" min="0" max="127" [(ngModel)]="midiData1" />
+        </label>
+
+        @if (midiKind === 'control-change') {
+          <label class="midi-field">
+            <span>Value</span>
+
+            <input type="number" min="0" max="127" [(ngModel)]="midiData2" />
+          </label>
+        }
+      </div>
+
+      <div class="midi-test-actions">
+        <button class="primary" [disabled]="!activeMidiDevice()" (click)="sendMidiTest()">Send Test</button>
+      </div>
+    </section>
+
+    <section class="midi-card">
+      <div class="midi-card-header">
+        <div>
+          <h2>MIDI input</h2>
+          <p>Listen to incoming MIDI messages and inspect what your hardware sends.</p>
+        </div>
+
+        <div class="midi-input-listening-state">
+          @if (midiInputListening()) {
+            <span class="pill ok">Listening</span>
+          } @else {
+            <span class="pill">Stopped</span>
+          }
+        </div>
+      </div>
+
+      <div class="midi-input-config">
+        <label class="midi-field">
+          <span>Input device</span>
+
+          <select [ngModel]="activeMidiInputDevice()" (ngModelChange)="setInputDevice($event)" [disabled]="midiInputListening()">
+            <option value="">None</option>
+
+            @for (device of midiInputs(); track device) {
+              <option [value]="device">{{ device }}</option>
+            }
+          </select>
+        </label>
+
+        <div class="midi-input-actions">
+          @if (!midiInputListening()) {
+            <button class="primary" [disabled]="!activeMidiInputDevice()" (click)="startListening()">Start listening</button>
+          } @else {
+            <button (click)="stopListening()">Stop listening</button>
+          }
+        </div>
+      </div>
+
+      <div class="midi-input-monitor">
+        <div class="midi-input-monitor-head">
+          <div>
+            <strong>MIDI input monitor</strong>
+            <p class="muted">Latest incoming messages from the selected device.</p>
+          </div>
+
+          <button [disabled]="!midiInputMessages().length" (click)="clearMessages()">Clear</button>
+        </div>
+
+        @if (midiInputMessages().length) {
+          <div class="midi-input-monitor-list">
+            @for (message of midiInputMessages(); track message.receivedAt + '-' + $index) {
+              <div class="midi-input-monitor-row">
+                <span>{{ formatMidiInputTime(message.receivedAt) }}</span>
+
+                <div class="midi-input-monitor-message">
+                  <strong>{{ decodeMidiMessage(message.bytes) }}</strong>
+                  <small>{{ formatMidiBytes(message.bytes) }}</small>
+
+                  <button class="midi-copy-button" (click)="copyInputMessage(message.bytes)">Copy event</button>
+                </div>
+              </div>
+            }
+          </div>
+        } @else {
+          <p class="muted">No MIDI message received yet.</p>
+        }
+      </div>
+    </section>
+
+    <section class="midi-card midi-diagnostics-card">
+      <div class="midi-card-header">
+        <div>
+          <h2>Timing model</h2>
+          <p>How scheduled MIDI offsets are interpreted.</p>
+        </div>
+      </div>
+
+      <div class="midi-timing-example">
+        <code>beat/chord anchor + offsetMs + device timing compensation</code>
+
+        <p>Example: an event with <strong>-120 ms</strong> offset is sent 120 ms before its beat or chord anchor.</p>
+      </div>
+    </section>
+  </div>
+</section>

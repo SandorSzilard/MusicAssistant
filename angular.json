@@ -18,7 +18,8 @@
             "tsConfig": "tsconfig.app.json",
             "inlineStyleLanguage": "css",
             "assets": [
-              { "glob": "**/*", "input": "public" }
+              { "glob": "**/*", "input": "public" },
+              { "glob": "essentia-wasm.es.js", "input": "node_modules/essentia.js/dist", "output": "/" }
             ],
             "styles": ["src/styles.css"]
           },
