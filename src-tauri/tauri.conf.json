@@ -1,0 +1,35 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Music Assistant",
+  "version": "0.1.0",
+  "identifier": "org.musicassistant.app",
+  "build": {
+    "beforeDevCommand": "npm run frontend:dev",
+    "devUrl": "http://127.0.0.1:4200",
+    "beforeBuildCommand": "npm run frontend:build",
+    "frontendDist": "../dist/music-assistant/browser"
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "Music Assistant",
+        "width": 1280,
+        "height": 820,
+        "minWidth": 960,
+        "minHeight": 640,
+        "resizable": true
+      }
+    ],
+    "security": {
+      "csp": null,
+      "assetProtocol": {
+        "enable": true,
+        "scope": ["**"]
+      }
+    }
+  },
+  "bundle": {
+    "active": false,
+    "targets": "all"
+  }
+}

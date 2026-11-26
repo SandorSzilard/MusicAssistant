@@ -1,0 +1,39 @@
+# Node / Angular
+node_modules/
+dist/
+.angular/
+
+# Rust / Tauri
+src-tauri/target/
+
+# IDE
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+.idea/
+.vs/
+*.user
+*.suo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Generated / local music data
+*.masidecar
+*.musicassistant
+*.musicassistant.json
+*.musicassistant-playlist.json
+*.mp3
+*.wav
+.cache/
+portable-build/
+
+# Logs
+*.log
+build-feedback/
+
+# Environment
+.env
+.env.*
+!.env.example

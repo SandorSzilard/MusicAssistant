@@ -1,0 +1,25 @@
+[package]
+name = "music-assistant"
+version = "0.1.0"
+description = "Offline musician practice and live-performance assistant"
+authors = ["Music Assistant contributors"]
+edition = "2021"
+license = "AGPL-3.0-or-later"
+
+[lib]
+name = "music_assistant_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2.5", features = [] }
+
+[dependencies]
+tauri = { version = "2.12", features = ["protocol-asset"] }
+tauri-plugin-dialog = "2.8"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+sha2 = "0.10"
+hex = "0.4"
+cpal = "0.18.2"
+midir = "0.11.1"
+wmidi = "4.0.11"
