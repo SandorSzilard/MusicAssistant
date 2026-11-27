@@ -32,7 +32,7 @@ jobs:
       branch: ${{ steps.ref.outputs.branch }}
       base_sha: ${{ steps.ref.outputs.base_sha }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           ref: ${{ github.ref }}
           fetch-depth: 0
@@ -124,7 +124,7 @@ jobs:
     outputs:
       sha: ${{ steps.commit.outputs.sha }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           ref: ${{ needs.validate.outputs.base_sha }}
           fetch-depth: 0
@@ -176,7 +176,7 @@ jobs:
             file: macOS-arm64.zip
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           ref: ${{ inputs.dry_run == true && needs.validate.outputs.base_sha || needs['commit-version'].outputs.sha }}
 
@@ -222,7 +222,7 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           ref: ${{ needs['commit-version'].outputs.sha }}
           fetch-depth: 0
