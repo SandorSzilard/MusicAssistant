@@ -9,6 +9,7 @@ import { LibraryService } from '../services/library.service';
 import { MidiDeviceService } from '../services/midi-device.service';
 import { PracticePlaybackService } from '../services/practice-playback.service';
 import { PracticeStateService } from '../services/practice-state.service';
+import { RegionalAnalysisMode, RegionalAnalysisService } from '../services/regional-analysis.service';
 import { SidecarService } from '../services/sidecar.service';
 import { clampTranspose, displaySongKey, formatTime, inverseTransposeChord, transposeChord } from '../utils/music.util';
 import { formatMidiBytes } from '../utils/midi.util';
@@ -32,6 +33,7 @@ export class PracticePageComponent {
   private readonly midiDevices = inject(MidiDeviceService);
   private readonly analysisOrchestrator = inject(AnalysisOrchestratorService);
   private readonly playback = inject(PracticePlaybackService);
+  private readonly regionalAnalysis = inject(RegionalAnalysisService);
 
   readonly tab = this.appState.tab;
   readonly status = this.appState.status;
@@ -81,6 +83,12 @@ export class PracticePageComponent {
   readonly isAnalyzing = this.analysisOrchestrator.isAnalyzing;
   readonly sourceTuningInput = this.analysisOrchestrator.sourceTuningInput;
   readonly tuningChoicePrompt = this.analysisOrchestrator.tuningChoicePrompt;
+  readonly manualChordAnalysisConfirmation = this.analysisOrchestrator.manualChordAnalysisConfirmation;
+  readonly regionalAnalysisDialog = this.regionalAnalysis.dialog;
+  readonly regionalAnalysisStartInput = this.regionalAnalysis.startInput;
+  readonly regionalAnalysisEndInput = this.regionalAnalysis.endInput;
+  readonly regionalAnalysisRegion = this.regionalAnalysis.selectedRegion;
+  readonly isRegionalAnalysisAnalyzing = this.regionalAnalysis.isAnalyzing;
   readonly dspAudioReady = this.playback.dspAudioReady;
   readonly chordWidthPx = 90;
   readonly formatTime = formatTime;
@@ -132,7 +140,28 @@ export class PracticePageComponent {
   effectiveBpm(song: Song): number | null { return this.playback.effectiveBpm(song); }
   setLoopSection(sectionId: string | null): void { this.playback.setLoopSection(sectionId); }
   seekByBeat(direction: -1 | 1): void { this.playback.seekByBeat(direction); }
-  async analyzeSong(song: Song): Promise<void> { await this.analysisOrchestrator.analyzeSong(song); }
+  analyzeSong(song: Song): void { this.analysisOrchestrator.requestFullAnalysis(song); }
+  confirmFullAnalysis(): void { this.analysisOrchestrator.confirmFullAnalysis(); }
+  cancelFullAnalysis(): void { this.analysisOrchestrator.cancelFullAnalysis(); }
+  openRegionalAnalysisDialog(): void {
+    const song = this.selectedSong();
+    if (!song) return;
+    this.regionalAnalysis.openDialog(song, this.currentTime());
+    this.closeWaveformContextMenu();
+  }
+  closeRegionalAnalysisDialog(): void { this.regionalAnalysis.closeDialog(); }
+  setRegionalStart(event: Event): void {
+    const value = Number((event.target as HTMLInputElement).value);
+    this.regionalAnalysisStartInput.set(value);
+  }
+  setRegionalEnd(event: Event): void {
+    const value = Number((event.target as HTMLInputElement).value);
+    this.regionalAnalysisEndInput.set(value);
+  }
+  async runRegionalAnalysis(mode: RegionalAnalysisMode): Promise<void> {
+    await this.regionalAnalysis.analyze(mode);
+  }
+  cancelRegionalAnalysis(): void { this.regionalAnalysis.cancelAnalysis(); }
   async saveSidecar(): Promise<void> { await this.analysisOrchestrator.saveSidecar(); }
   applyTuningCorrection(): void { this.analysisOrchestrator.applyTuningCorrection(); }
   resetTuning(): void { this.analysisOrchestrator.resetTuning(); }

@@ -72,7 +72,8 @@ describe('AnalysisOrchestratorService', () => {
     const song = createSong({ id: 'normal-song', startSeconds: 5, endSeconds: 20 });
     library.add(song);
 
-    await service.analyzeSong(song);
+    service.requestFullAnalysis(song);
+    await Promise.resolve();
     expect(worker.messages[0]?.type).toBe('analyze-tuning');
 
     worker.emit({ type: 'tuning-result', tuningFrequency: 440, tuningCents: 2, confidence: 0.99 });
@@ -109,6 +110,99 @@ describe('AnalysisOrchestratorService', () => {
     });
     expect(sidecars.save).toHaveBeenCalledTimes(1);
     expect(worker.terminate).toHaveBeenCalled();
+  });
+
+  it('starts full analysis without confirmation when there are no manual chord edits', async () => {
+    const worker = new FakeAnalysisWorker();
+    workers.push(worker);
+    const song = createSong({ id: 'unmodified-song' });
+    library.add(song);
+
+    service.requestFullAnalysis(song);
+    await Promise.resolve();
+
+    expect(service.manualChordAnalysisConfirmation()).toBeNull();
+    expect(worker.messages[0]?.type).toBe('analyze-tuning');
+    expect(service.isAnalyzing()).toBe(true);
+  });
+
+  it('prompts before full analysis when the song contains manually edited chords', async () => {
+    const song = createSong({
+      id: 'edited-song',
+      chords: [{ id: 'manual-chord', beatId: 'beat-0', beatIndex: 0, canonicalChord: 'F', userEdited: true }]
+    });
+    library.add(song);
+
+    service.requestFullAnalysis(song);
+
+    expect(service.manualChordAnalysisConfirmation()).toEqual({
+      songId: song.id,
+      fileName: song.fileName
+    });
+    expect(service.isAnalyzing()).toBe(false);
+  });
+
+  it('does not mutate song state or persistence when the user cancels', () => {
+    const song = createSong({
+      id: 'cancelled-song',
+      chords: [{ id: 'manual-chord', beatId: 'beat-0', beatIndex: 0, canonicalChord: 'F', userEdited: true }]
+    });
+    library.add(song);
+    const before = library.songs();
+    const statusBefore = service.status();
+
+    service.requestFullAnalysis(song);
+    service.cancelFullAnalysis();
+
+    expect(service.manualChordAnalysisConfirmation()).toBeNull();
+    expect(service.isAnalyzing()).toBe(false);
+    expect(library.songs()).toEqual(before);
+    expect(service.status()).toBe(statusBefore);
+    expect(sidecars.save).not.toHaveBeenCalled();
+    expect(workers).toHaveLength(0);
+  });
+
+  it('proceeds after confirmation and saves fresh automatic chords as the new baseline', async () => {
+    const worker = new FakeAnalysisWorker();
+    workers.push(worker);
+    const song = createSong({
+      id: 'confirmed-song',
+      chords: [{ id: 'manual-chord', beatId: 'beat-0', beatIndex: 0, canonicalChord: 'F', userEdited: true }]
+    });
+    library.add(song);
+
+    service.requestFullAnalysis(song);
+    expect(service.manualChordAnalysisConfirmation()).not.toBeNull();
+    service.confirmFullAnalysis();
+    await Promise.resolve();
+
+    expect(service.manualChordAnalysisConfirmation()).toBeNull();
+    expect(worker.messages[0]?.type).toBe('analyze-tuning');
+    expect(service.isAnalyzing()).toBe(true);
+
+    worker.emit({ type: 'tuning-result', tuningFrequency: 440, tuningCents: 2, confidence: 0.99 });
+    worker.emit({
+      type: 'full-analysis-result',
+      bpm: 120,
+      ticks: [0, 0.5],
+      chords: [{ beatIndex: 0, timestampSeconds: 0, chord: 'D', strength: 0.9, spanBeats: 2 }],
+      keyTonic: 'D',
+      keyMode: 'major',
+      loudnessLufs: -18,
+      loudnessStartSeconds: 0,
+      loudnessEndSeconds: 60
+    });
+
+    const analyzedSong = library.songs().find((item) => item.id === song.id);
+    expect(analyzedSong?.chords).toEqual([{
+      id: 'chord-0',
+      beatId: 'beat-0',
+      beatIndex: 0,
+      canonicalChord: 'D',
+      spanBeats: 2
+    }]);
+    expect(analyzedSong?.chords.some((chord) => chord.userEdited)).toBe(false);
+    expect(sidecars.save).toHaveBeenCalledWith(analyzedSong);
   });
 
   it('prompts on detuned audio and continues analysis when the user keeps the original tuning', async () => {

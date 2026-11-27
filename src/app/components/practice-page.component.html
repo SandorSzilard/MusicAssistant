@@ -239,6 +239,18 @@
                 }
               }
 
+              @if (regionalAnalysisRegion(); as region) {
+                @if (song.durationSeconds) {
+                  <div
+                    class="regional-analysis-region"
+                    [style.left.%]="(region.startSeconds / song.durationSeconds) * 100"
+                    [style.width.%]="((region.endSeconds - region.startSeconds) / song.durationSeconds) * 100"
+                  >
+                    <span>{{ formatTime(region.startSeconds) }} – {{ formatTime(region.endSeconds) }}</span>
+                  </div>
+                }
+              }
+
               @if (song.startSeconds != null && song.durationSeconds) {
                 <div class="song-boundary-marker start" [style.left.%]="(song.startSeconds / song.durationSeconds) * 100">
                   <span>START</span>
@@ -464,6 +476,8 @@
       } @else {
         <button (click)="startSectionCreation()">Add section at playhead…</button>
 
+        <button (click)="openRegionalAnalysisDialog()">Regional analysis…</button>
+
         <button class="context-menu-submenu" (click)="waveformMenuPage.set('boundaries')">
           <span>Song boundaries</span>
           <span>›</span>
@@ -486,6 +500,54 @@
       <div class="context-menu-divider"></div>
 
       <button (click)="closeWaveformContextMenu()">Cancel</button>
+    </div>
+  }
+
+  @if (manualChordAnalysisConfirmation(); as confirmation) {
+    <div class="modal-backdrop" (click)="cancelFullAnalysis()">
+      <div class="section-create-dialog panel regional-analysis-dialog" (click)="$event.stopPropagation()">
+        <h3>Analyze song</h3>
+        <p>Edited chords detected. Re-analyzing this song can replace your manual chord edits. Do you want to discard edited chords?</p>
+        <div class="section-dialog-actions">
+          <button class="danger" (click)="confirmFullAnalysis()">Yes / Discard edits</button>
+          <button (click)="cancelFullAnalysis()">No / Cancel</button>
+        </div>
+      </div>
+    </div>
+  }
+
+  @if (regionalAnalysisDialog(); as region) {
+    <div class="modal-backdrop" (pointerdown)="closeRegionalAnalysisDialog()">
+      <div class="section-create-dialog panel regional-analysis-dialog" (click)="$event.stopPropagation()">
+        <h3>Regional analysis</h3>
+        <p>Select canonical source-song time. Automatic edits outside this range remain unchanged.</p>
+
+        <div class="regional-analysis-fields">
+          <label>
+            Start (seconds)
+            <input type="number" step="0.01" [value]="regionalAnalysisStartInput()" (input)="setRegionalStart($event)" />
+          </label>
+          <label>
+            End (seconds)
+            <input type="number" step="0.01" [value]="regionalAnalysisEndInput()" (input)="setRegionalEnd($event)" />
+          </label>
+        </div>
+
+        @if (isRegionalAnalysisAnalyzing()) {
+          <div class="regional-analysis-progress">Analyzing the selected region...</div>
+        }
+
+        <div class="section-dialog-actions regional-analysis-actions">
+          @if (isRegionalAnalysisAnalyzing()) {
+            <button class="danger" (click)="cancelRegionalAnalysis()">Cancel</button>
+          } @else {
+            <button (click)="runRegionalAnalysis('beats')">Re-analyze beats</button>
+            <button (click)="runRegionalAnalysis('chords')">Re-analyze chords</button>
+            <button (click)="runRegionalAnalysis('both')">Re-analyze beats + chords</button>
+            <button (click)="closeRegionalAnalysisDialog()">Close</button>
+          }
+        </div>
+      </div>
     </div>
   }
 

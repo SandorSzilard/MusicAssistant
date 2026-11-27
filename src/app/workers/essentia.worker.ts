@@ -263,6 +263,132 @@ function handleWorkerMessage({ data }: MessageEvent): void {
     }
   }
 
+  if (data?.type === 'analyze-regional-rhythm') {
+    try {
+      const regionSamples = new Float32Array(data.samples);
+      const startSeconds = Number(data.startSeconds);
+      const endSeconds = Number(data.endSeconds);
+
+      if (!Number.isFinite(startSeconds) || !Number.isFinite(endSeconds) || endSeconds <= startSeconds) {
+        throw new Error('Regional rhythm range is invalid.');
+      }
+
+      const signal = essentia.arrayToVector(regionSamples);
+      const result = essentia.RhythmExtractor2013(signal);
+      signal.delete?.();
+
+      const relativeTicks = essentia.vectorToArray(result.ticks);
+      const ticks = Array.from(relativeTicks)
+        .map((tickSeconds) => startSeconds + Number(tickSeconds))
+        .filter((tickSeconds) => tickSeconds >= startSeconds - 0.000001 && tickSeconds <= endSeconds + 0.000001)
+        .filter((tickSeconds, index, all) => index === 0 || Math.abs(all[index - 1] - tickSeconds) > 0.000001);
+
+      postMessage({
+        type: 'regional-rhythm-result',
+        bpm: result.bpm,
+        ticks
+      });
+    } catch (error) {
+      postMessage({
+        type: 'error',
+        message: error instanceof Error ? error.message : String(error)
+      });
+    }
+
+    return;
+  }
+
+  if (data?.type === 'analyze-regional-chords') {
+    try {
+      const samples = new Float32Array(data.samples);
+      const ticks = data.ticks as number[];
+      const beatIndexes = data.beatIndexes as number[];
+      const startSeconds = Number(data.startSeconds);
+      const endSeconds = Number(data.endSeconds);
+      const tuningFrequency = Number.isFinite(data.tuningFrequency) && data.tuningFrequency > 0
+        ? Number(data.tuningFrequency)
+        : 440;
+
+      if (ticks.length < 2) {
+        throw new Error('At least two beats are required for regional chord analysis.');
+      }
+
+      const sampleRate = 44100;
+      const frameSize = 4096;
+      const hopSize = 2048;
+      const previousReferenceFrequency = extractor.profile.HPCP.referenceFrequency;
+      extractor.profile.HPCP.referenceFrequency = tuningFrequency;
+
+      const chords: Array<{
+        beatIndex: number;
+        timestampSeconds: number;
+        chord: string;
+        strength: number;
+        spanBeats?: number;
+      }> = [];
+
+      for (let i = 0; i < ticks.length - 1; i++) {
+        const intervalStart = ticks[i];
+        const intervalEnd = ticks[i + 1];
+        if (intervalEnd <= startSeconds || intervalStart >= endSeconds) {
+          continue;
+        }
+
+        const startSample = Math.max(0, Math.min(samples.length, Math.floor(Math.max(intervalStart, startSeconds) * sampleRate)));
+        const endSample = Math.max(startSample, Math.min(samples.length, Math.floor(Math.min(intervalEnd, endSeconds) * sampleRate)));
+        if (endSample <= startSample) {
+          continue;
+        }
+
+        const hpcpFrames: Float32Array[] = [];
+        for (let offset = startSample; offset + frameSize <= endSample; offset += hopSize) {
+          hpcpFrames.push(extractor.hpcpExtractor(samples.subarray(offset, offset + frameSize), sampleRate, false) as Float32Array);
+        }
+
+        if (!hpcpFrames.length) {
+          const center = Math.floor(((startSample + endSample) / 2));
+          const frameStart = Math.max(0, Math.min(samples.length - frameSize, center - Math.floor(frameSize / 2)));
+          hpcpFrames.push(extractor.hpcpExtractor(samples.subarray(frameStart, frameStart + frameSize), sampleRate, false) as Float32Array);
+        }
+
+        const medianHpcp = new Float32Array(12);
+        for (let bin = 0; bin < 12; bin++) {
+          const values = hpcpFrames.map((frame) => frame[bin]).sort((a, b) => a - b);
+          const middle = Math.floor(values.length / 2);
+          medianHpcp[bin] = values.length % 2 === 0
+            ? (values[middle - 1] + values[middle]) / 2
+            : values[middle];
+        }
+
+        const hpcpVector = essentia.arrayToVector(medianHpcp);
+        const result = essentia.Key(hpcpVector, 4, 12, 'tonictriad', 0.6, false, false, false);
+        hpcpVector.delete?.();
+
+        chords.push({
+          beatIndex: Number.isFinite(beatIndexes[i]) ? beatIndexes[i] : i,
+          timestampSeconds: intervalStart,
+          chord: result.scale === 'minor' ? `${result.key}m` : result.key,
+          strength: result.strength
+        });
+      }
+
+      extractor.profile.HPCP.referenceFrequency = previousReferenceFrequency;
+      const mergedChords = mergeConsecutiveChords(smoothDetectedChords(chords));
+
+      postMessage({
+        type: 'regional-chords-result',
+        chords: mergedChords
+      });
+    } catch (error) {
+      postMessage({
+        type: 'error',
+        message: error instanceof Error ? error.message : String(error)
+      });
+    }
+
+    return;
+  }
+
   if (data?.type === 'analyze-loudness') {
     try {
       const fullLeft = new Float32Array(data.left);

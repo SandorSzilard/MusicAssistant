@@ -951,6 +951,55 @@
   color: #a9bac8;
 }
 
+.regional-analysis-region {
+  position: absolute;
+  z-index: 12;
+  top: 4px;
+  bottom: 4px;
+  border: 1px solid #4db8ff;
+  border-radius: 5px;
+  background: rgba(77, 184, 255, 0.16);
+  pointer-events: none;
+}
+
+.regional-analysis-region span {
+  position: absolute;
+  left: 4px;
+  top: 4px;
+  padding: 2px 5px;
+  border-radius: 4px;
+  background: #101820;
+  color: #dbeeff;
+  font-size: 10px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.regional-analysis-dialog {
+  width: min(520px, calc(100vw - 32px));
+}
+
+.regional-analysis-fields {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.regional-analysis-fields input {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.regional-analysis-actions {
+  flex-wrap: wrap;
+}
+
+.regional-analysis-progress {
+  margin-top: 14px;
+  color: #93a6b7;
+  font-size: 12px;
+}
+
 .chord-context-menu button.danger {
   color: #ff8b8b;
 }

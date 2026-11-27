@@ -73,6 +73,17 @@ anchorSeconds + (event.offsetMs + deviceTimingCompensationMs) / 1000
 4. MIDI labels/markers must not change chord cell width/timeline timing.
 5. Context-menu START/END operations use the current playhead position, not the mouse pixel/time where the menu was opened.
 
+## Regional analysis
+
+1. Regional analysis uses canonical source-song seconds; UI/worker boundaries must not depend on mouse pixels.
+2. Regional results never change tuning, transpose, START/END, loudness, sections or source audio.
+3. Regional merge preserves analysis outside the selected region except for necessary beat/chord/MIDI reconciliation.
+4. Manual chords inside the region are preserved and remapped to the nearest corrected beat when possible. Ambiguous remaps are reported rather than silently discarding the edit.
+5. MIDI events are never silently dropped. In-region anchors are remapped by canonical timestamp to the nearest corrected beat/chord.
+6. Regional jobs use generation/cancellation guards so stale worker results cannot update the song or sidecar.
+7. Full-song `Analyze song` requests warn before starting when any chord has `userEdited === true`; cancellation leaves song and sidecar state unchanged.
+8. Confirmed full-song analysis may replace manual chord edits with fresh automatic results. Regional analysis continues to use its separate preservation/remapping policy.
+
 ## Release/repository
 
 1. No agent may push without explicit user approval.

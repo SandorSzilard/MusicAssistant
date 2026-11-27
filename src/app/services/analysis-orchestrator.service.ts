@@ -30,6 +30,11 @@ export class AnalysisOrchestratorService {
     tuningCents: number;
   } | null>(null);
 
+  readonly manualChordAnalysisConfirmation = signal<{
+    songId: string;
+    fileName: string;
+  } | null>(null);
+
   private analysisQueue: Song[] = [];
 
   private currentAnalysisSongId: string | null = null;
@@ -117,6 +122,36 @@ export class AnalysisOrchestratorService {
   }
 
   // Analysis orchestration
+  requestFullAnalysis(song: Song): void {
+    if (song.chords.some((chord) => chord.userEdited === true)) {
+      this.manualChordAnalysisConfirmation.set({
+        songId: song.id,
+        fileName: song.fileName
+      });
+      return;
+    }
+
+    void this.analyzeSong(song);
+  }
+
+  confirmFullAnalysis(): void {
+    const confirmation = this.manualChordAnalysisConfirmation();
+    this.manualChordAnalysisConfirmation.set(null);
+
+    if (!confirmation) {
+      return;
+    }
+
+    const song = this.library.songs().find((item) => item.id === confirmation.songId);
+    if (song) {
+      void this.analyzeSong(song);
+    }
+  }
+
+  cancelFullAnalysis(): void {
+    this.manualChordAnalysisConfirmation.set(null);
+  }
+
   async analyzeSong(song: Song, sourceTuningOverrideHz: number | null = null): Promise<void> {
     if (!song.assetUrl) {
       this.library.update(song.id, {

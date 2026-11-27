@@ -68,6 +68,22 @@ source audio
 
 START/END edits trigger a lighter loudness-only worker pass. A per-song generation counter rejects stale overlapping results.
 
+## Regional analysis
+
+`RegionalAnalysisService` owns regional worker orchestration and stale-result cancellation. `regional-analysis.util.ts` provides canonical region normalization, beat merge, chord merge, and MIDI anchor reconciliation.
+
+The Practice waveform exposes a canonical start/end dialog. The Essentia worker supports dedicated regional rhythm and regional beat-aligned chord requests.
+
+Merge policy:
+
+- analysis outside the region remains unchanged except for necessary anchor reconciliation;
+- beat IDs outside the region remain stable;
+- corrected in-region beats receive deterministic IDs and re-indexed beat positions;
+- manual in-region chords are preserved and remapped to the nearest corrected beat;
+- automatic in-region chords are replaced for chords-only/both operations;
+- MIDI anchors are remapped by canonical timestamp within the selected region;
+- tuning, transpose, START/END, loudness and sections are not modified by regional analysis.
+
 ## DSP flow
 
 ```text

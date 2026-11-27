@@ -45,4 +45,32 @@ describe('SidecarService', () => {
     await expect(service.load(createSong())).resolves.toBeNull();
     await expect(service.load(createSong({ fingerprintSha256: undefined }))).rejects.toThrow('fingerprinted');
   });
+
+  it('round-trips corrected regional beats, chords, and MIDI anchors', async () => {
+    const service = TestBed.inject(SidecarService);
+    const corrected = createSong({
+      beats: [
+        { id: 'beat-0', index: 0, timestampSeconds: 0 },
+        { id: 'regional-beat-0-0.500000', index: 1, timestampSeconds: 0.5 },
+        { id: 'beat-3', index: 2, timestampSeconds: 1.5 }
+      ],
+      chords: [
+        { id: 'regional-chord-1-0.500000', beatId: 'regional-beat-0-0.500000', beatIndex: 1, canonicalChord: 'Am', spanBeats: 1 }
+      ],
+      midiEvents: [{
+        id: 'midi-region',
+        anchorBeatId: 'regional-beat-0-0.500000',
+        anchorChordId: 'regional-chord-1-0.500000',
+        offsetMs: 20,
+        kind: 'control-change',
+        channel: 2,
+        data1: 10,
+        data2: 64
+      }]
+    });
+    const sidecar = service.build(corrected);
+    backend.readText.mockResolvedValue(JSON.stringify(sidecar));
+
+    await expect(service.load(corrected)).resolves.toEqual(sidecar);
+  });
 });

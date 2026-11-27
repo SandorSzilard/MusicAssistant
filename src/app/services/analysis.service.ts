@@ -19,6 +19,16 @@ export type AnalysisWorkerRequest =
   | { type: 'ping' }
   | { type: 'analyze-rhythm'; samples: ArrayBuffer }
   | { type: 'analyze-chords-beats'; samples: ArrayBuffer; ticks: number[] }
+  | { type: 'analyze-regional-rhythm'; samples: ArrayBuffer; startSeconds: number; endSeconds: number }
+  | {
+      type: 'analyze-regional-chords';
+      samples: ArrayBuffer;
+      ticks: number[];
+      beatIndexes: number[];
+      startSeconds: number;
+      endSeconds: number;
+      tuningFrequency: number;
+    }
   | { type: 'analyze-loudness'; left: ArrayBuffer; right: ArrayBuffer; startSeconds: number; endSeconds: number }
   | {
       type: 'full-analysis';
@@ -35,6 +45,8 @@ export type AnalysisWorkerResponse =
   | { type: 'ready'; hasRhythmExtractor2013: boolean }
   | { type: 'rhythm-result'; bpm: number; ticks: number[] }
   | { type: 'chords-beats-result'; chords: AnalysisDetectedChord[] }
+  | { type: 'regional-rhythm-result'; bpm: number; ticks: number[] }
+  | { type: 'regional-chords-result'; chords: AnalysisDetectedChord[] }
   | { type: 'loudness-result'; loudnessLufs: number; startSeconds: number; endSeconds: number }
   | {
       type: 'full-analysis-result';

@@ -62,6 +62,7 @@
 - merge results safely;
 - preserve manual edits according to explicit merge/conflict rules;
 - persist results and cover merge behavior with tests.
+- Status: implementation complete; manual Chapter 11 testing pending.
 
 ### Chapter 12 - Hardening + release automation
 - long-playlist/missing-file/device-change/malformed-data robustness;
