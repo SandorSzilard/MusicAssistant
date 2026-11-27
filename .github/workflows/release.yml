@@ -208,7 +208,7 @@ jobs:
         run: npm run package:release -- --target ${{ matrix.target }}
 
       - name: Upload release artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: MusicAssistant-${{ needs.validate.outputs.version }}-${{ matrix.artifact }}
           path: dist/releases/MusicAssistant-${{ needs.validate.outputs.version }}-${{ matrix.file }}
