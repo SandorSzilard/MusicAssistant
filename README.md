@@ -2,7 +2,7 @@
 
 Offline-first practice and live-performance software for musicians working with local audio. Music Assistant combines song analysis, editable chord timelines, practice tools, playlists, and optional MIDI in a native desktop app.
 
-> **Project status:** active pre-release development. The release workflow is implemented and locally validated, but its first cross-platform GitHub Actions dry run is still pending. No public production release is available yet.
+> **Project status:** active pre-release development. The first four-platform GitHub Actions dry run succeeded; portable release packaging is being finalized before public distribution. No public production release is available yet.
 
 ## Features
 
@@ -52,14 +52,14 @@ These captures show the current app UI without personal song names or file paths
 
 The current manual release workflow targets:
 
-| Platform | Architecture | Installer |
+| Platform | Architecture | Portable release artifact |
 | --- | --- | --- |
-| Windows | x64 | NSIS setup executable |
-| Linux (Debian/Ubuntu compatible) | x64 | `.deb` package |
-| macOS | Intel x64 | `.dmg` disk image |
-| macOS | Apple Silicon arm64 | `.dmg` disk image |
+| Windows | x64 | ZIP containing the standalone `MusicAssistant.exe` |
+| Linux | x64 | AppImage (`.AppImage`) |
+| macOS | Intel x64 | ZIP containing the `.app` bundle |
+| macOS | Apple Silicon arm64 | ZIP containing the `.app` bundle |
 
-These are the configured build targets, not a claim of public release certification. Windows installers are currently unsigned, and macOS packages are not notarized.
+These are the configured build targets, not a claim of public release certification. The Windows executable is unsigned, and macOS app bundles are not notarized. The Linux AppImage bundles GStreamer support for audio playback but still requires a compatible Linux system with WebKitGTK 4.1 and a compatible glibc.
 
 ## Local-first design and portable files
 
@@ -100,8 +100,9 @@ The release workflow uses Ubuntu 22.04. For Debian/Ubuntu development, install T
 
 ```bash
 sudo apt-get update
-sudo apt-get install -y build-essential curl file libayatana-appindicator3-dev \
-  libssl-dev libwebkit2gtk-4.1-dev librsvg2-dev libxdo-dev patchelf wget
+sudo apt-get install -y build-essential curl file libasound2-dev \
+  libayatana-appindicator3-dev libssl-dev libwebkit2gtk-4.1-dev librsvg2-dev \
+  libxdo-dev patchelf wget
 ```
 
 Other Linux distributions need their equivalent WebKitGTK, GTK, and build dependencies; see the [Tauri v2 prerequisites](https://v2.tauri.app/start/prerequisites/).
@@ -139,7 +140,7 @@ npm run dev
 | Rust formatting check | `npm run rust:fmt` |
 | Rust compile check | `npm run rust:check` |
 | Tauri app build without installer bundling | `npm run build:app` |
-| Build a native installer for this host | `npm run release:local` |
+| Build a portable release artifact for this host | `npm run release:local` |
 | Print expected package details without building | `npm run package:release -- --dry-run` |
 
 The CI workflow runs these quality gates on Linux, Windows, and macOS. Hardware-dependent audio playback and MIDI behavior still need manual verification on the target machine.
@@ -151,20 +152,22 @@ The release workflow is manual:
 1. Open **GitHub → Actions → Release → Run workflow**.
 2. Select the release branch.
 3. Choose the semantic version bump: `patch`, `minor`, or `major`.
-4. For the first run, enable **Build all installers without committing, tagging, or publishing** and review the result before requesting a real release.
+4. For a dry run, enable **Build all portable artifacts without committing, tagging, or publishing** and review the result before requesting a real release.
 
-A dry run validates the synchronized version change, installs dependencies with `npm ci`, runs frontend/release-tool/Rust quality gates, builds all four native installers, and uploads temporary workflow artifacts (retained for seven days). It does not commit, push, tag, or publish a GitHub Release.
+A dry run validates the synchronized version change, installs dependencies with `npm ci`, runs frontend/release-tool/Rust quality gates, builds all four portable artifacts, and uploads temporary workflow artifacts (retained for seven days). It does not commit, push, tag, or publish a GitHub Release.
 
-A real run repeats validation, creates and pushes a synchronized version commit to the selected branch, builds the platform installers, and only then creates the `vX.Y.Z` tag and GitHub Release. The selected branch must allow the GitHub Actions token to push the version commit. Publishing is blocked unless every required platform artifact is present.
+A real run repeats validation, creates and pushes a synchronized version commit to the selected branch, builds the portable artifacts, and only then creates the `vX.Y.Z` tag and GitHub Release. The selected branch must allow the GitHub Actions token to push the version commit. Publishing is blocked unless every required portable artifact is present, and the publish command attaches only the four explicitly named portable files.
 
-The installer files and Actions artifact bundles are named:
+The portable files and Actions artifact bundles are named:
 
-| Installer file | Uploaded Actions artifact |
+| Portable release file | Uploaded Actions artifact |
 | --- | --- |
-| `MusicAssistant-X.Y.Z-Windows-x64-setup.exe` | `MusicAssistant-X.Y.Z-Windows-x64` |
-| `MusicAssistant-X.Y.Z-Linux-x64.deb` | `MusicAssistant-X.Y.Z-Linux-x64` |
-| `MusicAssistant-X.Y.Z-macOS-x64.dmg` | `MusicAssistant-X.Y.Z-macOS-x64` |
-| `MusicAssistant-X.Y.Z-macOS-arm64.dmg` | `MusicAssistant-X.Y.Z-macOS-arm64` |
+| `MusicAssistant-X.Y.Z-Windows-x64.zip` | `MusicAssistant-X.Y.Z-Windows-x64` |
+| `MusicAssistant-X.Y.Z-Linux-x64.AppImage` | `MusicAssistant-X.Y.Z-Linux-x64` |
+| `MusicAssistant-X.Y.Z-macOS-x64.zip` | `MusicAssistant-X.Y.Z-macOS-x64` |
+| `MusicAssistant-X.Y.Z-macOS-arm64.zip` | `MusicAssistant-X.Y.Z-macOS-arm64` |
+
+The Windows ZIP contains only `MusicAssistant.exe`; no app installation or additional adjacent files are required. The executable uses the Windows WebView2 Runtime, which is included with supported Windows versions. Each macOS ZIP contains the corresponding `.app` bundle.
 
 See [docs/RELEASING.md](docs/RELEASING.md) for branch permissions, version synchronization, and local packaging details. The first workflow run should be a dry run.
 

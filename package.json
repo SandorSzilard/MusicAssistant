@@ -18,7 +18,7 @@
     "test": "npm run test:ci",
     "test:ci": "ng test --watch=false",
     "test:coverage": "ng test --watch=false --coverage",
-    "test:release-tools": "node --test scripts/version.test.mjs",
+    "test:release-tools": "node --test scripts/version.test.mjs scripts/package-release.test.mjs",
     "typecheck": "tsc --noEmit -p tsconfig.app.json",
     "build": "npm run frontend:build",
     "build:app": "tauri build --no-bundle",

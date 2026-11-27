@@ -12,7 +12,7 @@ on:
           - minor
           - major
       dry_run:
-        description: Build all installers without committing, tagging, or publishing
+        description: Build all portable artifacts without committing, tagging, or publishing
         required: true
         type: boolean
         default: false
@@ -161,15 +161,19 @@ jobs:
           - os: windows-latest
             target: x86_64-pc-windows-msvc
             artifact: Windows-x64
+            file: Windows-x64.zip
           - os: ubuntu-22.04
             target: x86_64-unknown-linux-gnu
             artifact: Linux-x64
+            file: Linux-x64.AppImage
           - os: macos-15-intel
             target: x86_64-apple-darwin
             artifact: macOS-x64
+            file: macOS-x64.zip
           - os: macos-15
             target: aarch64-apple-darwin
             artifact: macOS-arm64
+            file: macOS-arm64.zip
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
@@ -200,14 +204,14 @@ jobs:
         if: inputs.dry_run
         run: node scripts/version.mjs "${{ inputs.bump }}"
 
-      - name: Build native Tauri installer
+      - name: Build portable release artifact
         run: npm run package:release -- --target ${{ matrix.target }}
 
       - name: Upload release artifact
         uses: actions/upload-artifact@v4
         with:
           name: MusicAssistant-${{ needs.validate.outputs.version }}-${{ matrix.artifact }}
-          path: dist/releases/*
+          path: dist/releases/MusicAssistant-${{ needs.validate.outputs.version }}-${{ matrix.file }}
           if-no-files-found: error
           retention-days: 7
 
@@ -230,14 +234,14 @@ jobs:
           path: dist/releases
           merge-multiple: true
 
-      - name: Verify complete artifact set
+      - name: Verify complete portable artifact set
         env:
           VERSION: ${{ needs.validate.outputs.version }}
         run: |
-          test -f "dist/releases/MusicAssistant-${VERSION}-Windows-x64-setup.exe"
-          test -f "dist/releases/MusicAssistant-${VERSION}-Linux-x64.deb"
-          test -f "dist/releases/MusicAssistant-${VERSION}-macOS-x64.dmg"
-          test -f "dist/releases/MusicAssistant-${VERSION}-macOS-arm64.dmg"
+          test -f "dist/releases/MusicAssistant-${VERSION}-Windows-x64.zip"
+          test -f "dist/releases/MusicAssistant-${VERSION}-Linux-x64.AppImage"
+          test -f "dist/releases/MusicAssistant-${VERSION}-macOS-x64.zip"
+          test -f "dist/releases/MusicAssistant-${VERSION}-macOS-arm64.zip"
 
       - name: Create tag and GitHub Release
         env:
@@ -245,4 +249,9 @@ jobs:
           VERSION: ${{ needs.validate.outputs.version }}
           TARGET_SHA: ${{ needs['commit-version'].outputs.sha }}
         run: |
-          gh release create "v${VERSION}" dist/releases/* --target "${TARGET_SHA}" --generate-notes
+          gh release create "v${VERSION}" \
+            "dist/releases/MusicAssistant-${VERSION}-Windows-x64.zip" \
+            "dist/releases/MusicAssistant-${VERSION}-Linux-x64.AppImage" \
+            "dist/releases/MusicAssistant-${VERSION}-macOS-x64.zip" \
+            "dist/releases/MusicAssistant-${VERSION}-macOS-arm64.zip" \
+            --target "${TARGET_SHA}" --generate-notes
