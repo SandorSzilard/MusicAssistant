@@ -162,6 +162,6 @@
 
   <footer>
     <span>{{ status() }}</span
-    ><span>Music Assistant v0.1.0</span>
+    ><span>Music Assistant v{{ health()?.version ?? '...' }}</span>
   </footer>
 </div>
