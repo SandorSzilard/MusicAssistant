@@ -23,10 +23,19 @@ jobs:
           components: rustfmt
 
       - name: Install frontend dependencies
-        run: npm install
+        run: npm ci
+
+      - name: Frontend unit tests
+        run: npm test
+
+      - name: TypeScript type check
+        run: npm run typecheck
 
       - name: Angular build
         run: npm run frontend:build
+
+      - name: Rust tests
+        run: npm run rust:test
 
       - name: Rust format check
         run: npm run rust:fmt

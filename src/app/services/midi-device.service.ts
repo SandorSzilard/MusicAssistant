@@ -1,22 +1,18 @@
 import { Injectable, inject, signal } from '@angular/core';
 import { listen, UnlistenFn } from '@tauri-apps/api/event';
-import { MidiEvent, MidiMessageKind } from '../models/domain.models';
-import { formatMidiBytes } from '../utils/midi.util';
+import { MidiEvent } from '../models/domain.models';
+import { formatMidiBytes, midiEventBytes, midiTestBytes } from '../utils/midi.util';
 import { ApplicationStateService } from './application-state.service';
 import { BackendService } from './backend.service';
 import { SettingsService } from './settings.service';
+import type { MidiTestMessage } from '../utils/midi.util';
+
+export type { MidiTestMessage } from '../utils/midi.util';
 
 export interface MidiInputMonitorMessage {
   receivedAt: number;
   timestamp: number;
   bytes: number[];
-}
-
-export interface MidiTestMessage {
-  kind: MidiMessageKind;
-  channel: number;
-  data1: number;
-  data2: number;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -98,16 +94,7 @@ export class MidiDeviceService {
       return;
     }
 
-    const channel = Math.max(1, Math.min(16, test.channel)) - 1;
-    let bytes: number[];
-
-    if (test.kind === 'program-change') {
-      bytes = [0xc0 | channel, Math.max(0, Math.min(127, test.data1))];
-    } else if (test.kind === 'control-change') {
-      bytes = [0xb0 | channel, Math.max(0, Math.min(127, test.data1)), Math.max(0, Math.min(127, test.data2))];
-    } else {
-      bytes = [0xf8];
-    }
+    const bytes = midiTestBytes(test);
 
     try {
       await this.backend.sendMidiBytes(device, bytes);
@@ -248,7 +235,7 @@ export class MidiDeviceService {
       return;
     }
 
-    const bytes = this.midiEventBytes(event);
+    const bytes = midiEventBytes(event);
 
     if (!bytes?.length) {
       console.warn('Scheduled MIDI event skipped: invalid MIDI payload.', event);
@@ -287,24 +274,6 @@ export class MidiDeviceService {
       console.error('Could not save global settings:', error);
       this.applicationState.status.set(`Could not save settings: ${this.errorMessage(error)}`);
     }
-  }
-
-  private midiEventBytes(event: MidiEvent): number[] | null {
-    const channel = Math.max(1, Math.min(16, event.channel)) - 1;
-
-    if (event.kind === 'program-change') {
-      return [0xc0 | channel, Math.max(0, Math.min(127, event.data1))];
-    }
-
-    if (event.kind === 'control-change') {
-      return [0xb0 | channel, Math.max(0, Math.min(127, event.data1)), Math.max(0, Math.min(127, event.data2 ?? 0))];
-    }
-
-    if (event.kind === 'raw') {
-      return event.rawBytes?.length ? [...event.rawBytes] : null;
-    }
-
-    return null;
   }
 
   private errorMessage(error: unknown): string {

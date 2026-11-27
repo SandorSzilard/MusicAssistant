@@ -52,6 +52,7 @@ Windows development currently expects:
 ## Setup and common commands
 
 ```bash
+npm ci
 npm run setup
 npm run doctor
 npm run dev
@@ -61,7 +62,11 @@ Useful existing commands:
 
 ```bash
 npm run frontend:dev
+npm test
+npm run test:coverage
+npm run typecheck
 npm run frontend:build
+npm run rust:test
 npm run rust:fmt
 npm run rust:check
 npm run build:app
@@ -69,7 +74,9 @@ npm run release:local
 npm run feedback
 ```
 
-Automated test commands will be added in Chapter 10.
+`npm test` runs the Angular/Vitest unit suite once (no watch mode). `npm run test:coverage` runs the same suite with V8 coverage. The CI workflow installs the lockfile with `npm ci`, then runs frontend tests, type checking, production build, Rust tests, formatting and compilation checks.
+
+The unit suite uses fakes for filesystem/backend and analysis boundaries; MIDI hardware and native audio playback remain manual integration checks.
 
 ## Keyboard help
 

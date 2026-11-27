@@ -39,6 +39,14 @@
           },
           "defaultConfiguration": "production"
         },
+        "test": {
+          "builder": "@angular/build:unit-test",
+          "options": {
+            "buildTarget": "music-assistant:build:development",
+            "runner": "vitest",
+            "tsConfig": "tsconfig.spec.json"
+          }
+        },
         "serve": {
           "builder": "@angular/build:dev-server",
           "configurations": {
