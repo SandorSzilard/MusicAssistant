@@ -1,37 +1,41 @@
-# Portable data formats - draft v1
+# Portable data formats
 
-## Song sidecar
+## Song sidecar: `.masidecar`
 
-Suggested filename:
+The app stores per-song data as JSON beside the source audio:
 
 ```text
-Song.mp3
-Song.mp3.musicassistant.json
+<source-audio-path>.masidecar
 ```
 
-Draft structure:
+Schema version 1 includes an audio identity, analysis results, and user edits. The loader accepts the supported schema only when `audioIdentity.sha256` matches the source file's SHA-256 fingerprint. Missing, unreadable, unsupported, or mismatched sidecars are treated as unusable. Source audio is never modified.
 
 ```json
 {
   "schemaVersion": 1,
   "audioIdentity": {
-    "sha256": "...",
+    "sha256": "<source-audio-sha256>",
     "fileNameHint": "Song.mp3"
   },
   "analysis": {
-    "bpm": 120.0,
-    "tuningCents": 0.0,
-    "loudnessLufs": -14.2,
     "beats": [],
-    "chords": []
+    "chords": [],
+    "detectedTuningHz": null
   },
   "userEdits": {
-    "transposeSemitones": 1,
-    "startSeconds": 0.0,
-    "endSeconds": null,
-    "midiEvents": []
+    "transposeSemitones": 0,
+    "midiEvents": [],
+    "countInEnabled": false,
+    "countInClicks": 4,
+    "sourceTuningHz": null,
+    "tuningCorrectionEnabled": false,
+    "tuningCorrectionCents": 0
   }
 }
 ```
 
-Practice speed and current loop selection are intentionally not canonical song metadata.
+The analysis object can include BPM, tuning, loudness, key, waveform peaks, beats, and chords. User edits include transpose and tuning correction, START/END boundaries, count-in, MIDI events, named sections, and tempo multiplier. Beat and chord records retain canonical source-song timing and pitch.
+
+## Playlist/set file: `.musicassistant`
+
+Live playlists are stored as portable JSON files using schema version 1 and `type: "playlist"`. The file contains playlist settings and entries plus references to songs, including their fingerprints and source paths. Song audio and sidecars remain separate files.

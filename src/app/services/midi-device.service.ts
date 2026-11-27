@@ -137,6 +137,8 @@ export class MidiDeviceService {
       this.midiInputListening.set(true);
       this.applicationState.status.set(`Listening for MIDI input from ${deviceName}.`);
     } catch (error) {
+      this.midiInputUnlisten?.();
+      this.midiInputUnlisten = null;
       this.midiInputListening.set(false);
       this.applicationState.status.set(`Could not start MIDI input: ${this.errorMessage(error)}`);
     }

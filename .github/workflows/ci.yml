@@ -2,12 +2,22 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, master]
   pull_request:
 
+permissions:
+  contents: read
+
 jobs:
-  windows-build-check:
-    runs-on: windows-latest
+  quality-and-build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-22.04
+          - os: windows-latest
+          - os: macos-15
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
 
@@ -22,16 +32,28 @@ jobs:
         with:
           components: rustfmt
 
+      - name: Install Linux Tauri prerequisites
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential curl file libayatana-appindicator3-dev libssl-dev libwebkit2gtk-4.1-dev librsvg2-dev libxdo-dev patchelf wget
+
       - name: Install frontend dependencies
         run: npm ci
+
+      - name: Release tooling tests
+        run: npm run test:release-tools
 
       - name: Frontend unit tests
         run: npm test
 
+      - name: Frontend coverage
+        run: npm run test:coverage
+
       - name: TypeScript type check
         run: npm run typecheck
 
-      - name: Angular build
+      - name: Angular production build
         run: npm run frontend:build
 
       - name: Rust tests
@@ -43,5 +65,5 @@ jobs:
       - name: Rust check
         run: npm run rust:check
 
-      - name: Tauri portable build
+      - name: Tauri application build
         run: npm run build:app

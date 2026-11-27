@@ -21,8 +21,27 @@ Before changing core behavior, read:
 
 ## Development
 
+For platform-specific toolchain prerequisites, see the [README development prerequisites](README.md#development-prerequisites).
+
 ```bash
+npm ci
 npm run setup
 npm run doctor
 npm run dev
 ```
+
+Before submitting changes, run the same checks as CI:
+
+```bash
+npm run test:release-tools
+npm test
+npm run test:coverage
+npm run typecheck
+npm run frontend:build
+npm run rust:test
+npm run rust:fmt
+npm run rust:check
+npm run build:app
+```
+
+For manual GitHub releases, follow [docs/RELEASING.md](docs/RELEASING.md). Do not create or push release tags locally as a substitute for the validated workflow.

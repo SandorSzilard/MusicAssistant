@@ -112,6 +112,22 @@ describe('AnalysisOrchestratorService', () => {
     expect(worker.terminate).toHaveBeenCalled();
   });
 
+  it('marks worker-reported analysis failures and releases the worker', async () => {
+    const worker = new FakeAnalysisWorker();
+    workers.push(worker);
+    const song = createSong({ id: 'failed-analysis' });
+    library.add(song);
+
+    service.requestFullAnalysis(song);
+    await Promise.resolve();
+    worker.emit({ type: 'error', message: 'Essentia worker failed' });
+
+    expect(library.songs().find((item) => item.id === song.id)?.analysisState).toBe('error');
+    expect(service.status()).toBe('Analysis error: Essentia worker failed');
+    expect(service.isAnalyzing()).toBe(false);
+    expect(worker.terminate).toHaveBeenCalledOnce();
+  });
+
   it('starts full analysis without confirmation when there are no manual chord edits', async () => {
     const worker = new FakeAnalysisWorker();
     workers.push(worker);

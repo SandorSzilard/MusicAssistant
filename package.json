@@ -18,14 +18,15 @@
     "test": "npm run test:ci",
     "test:ci": "ng test --watch=false",
     "test:coverage": "ng test --watch=false --coverage",
+    "test:release-tools": "node --test scripts/version.test.mjs",
     "typecheck": "tsc --noEmit -p tsconfig.app.json",
     "build": "npm run frontend:build",
     "build:app": "tauri build --no-bundle",
     "rust:test": "cargo test --manifest-path src-tauri/Cargo.toml",
     "rust:check": "cargo check --manifest-path src-tauri/Cargo.toml",
     "rust:fmt": "cargo fmt --manifest-path src-tauri/Cargo.toml -- --check",
-    "release:local": "npm run build:app && npm run package:portable",
-    "package:portable": "node scripts/package-portable.mjs",
+    "release:local": "npm run package:release",
+    "package:release": "node scripts/package-release.mjs",
     "feedback": "node scripts/collect-feedback.mjs"
   },
   "dependencies": {
@@ -49,7 +50,6 @@
     "@angular/compiler-cli": "~21.2.0",
     "@tauri-apps/cli": "2.12.4",
     "@vitest/coverage-v8": "^4.1.12",
-    "archiver": "7.0.1",
     "jsdom": "^27.4.0",
     "typescript": "~5.9.0",
     "vitest": "^4.1.12"

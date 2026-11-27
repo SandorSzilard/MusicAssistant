@@ -1,18 +1,62 @@
 name: Release
 
 on:
-  push:
-    tags:
-      - 'v*'
+  workflow_dispatch:
+    inputs:
+      bump:
+        description: Semantic version increment
+        required: true
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+      dry_run:
+        description: Build all installers without committing, tagging, or publishing
+        required: true
+        type: boolean
+        default: false
 
 permissions:
-  contents: write
+  contents: read
+
+concurrency:
+  group: manual-release-${{ github.repository }}
+  cancel-in-progress: false
 
 jobs:
-  windows-portable:
-    runs-on: windows-latest
+  validate:
+    runs-on: ubuntu-22.04
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      branch: ${{ steps.ref.outputs.branch }}
+      base_sha: ${{ steps.ref.outputs.base_sha }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref }}
+          fetch-depth: 0
+
+      - name: Validate selected release ref
+        id: ref
+        shell: bash
+        run: |
+          if [[ "${GITHUB_REF_TYPE}" != "branch" ]]; then
+            echo "Release must be run from a branch, not ${GITHUB_REF_TYPE}." >&2
+            exit 1
+          fi
+          if [[ -n "$(git status --porcelain)" ]]; then
+            echo "The checked-out release ref must have a clean working tree." >&2
+            exit 1
+          fi
+          branch="${GITHUB_REF_NAME}"
+          git fetch origin "refs/heads/${branch}:refs/remotes/origin/${branch}"
+          if [[ "$(git rev-parse HEAD)" != "$(git rev-parse "origin/${branch}")" ]]; then
+            echo "Selected branch is not at its current origin tip; rerun from the latest commit." >&2
+            exit 1
+          fi
+          echo "branch=${branch}" >> "$GITHUB_OUTPUT"
+          echo "base_sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
 
       - name: Setup Node
         uses: actions/setup-node@v4
@@ -22,22 +66,183 @@ jobs:
 
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt
 
-      - name: Install dependencies
-        run: npm install
+      - name: Install Linux Tauri prerequisites
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential curl file libayatana-appindicator3-dev libssl-dev libwebkit2gtk-4.1-dev librsvg2-dev libxdo-dev patchelf wget
 
-      - name: Build and package portable release
-        run: npm run release:local
+      - name: Bump synchronized version metadata
+        id: version
+        run: |
+          node scripts/version.mjs "${{ inputs.bump }}"
+          version="$(node -p "JSON.parse(require('node:fs').readFileSync('package.json', 'utf8')).version")"
+          if git ls-remote --exit-code --tags origin "refs/tags/v${version}" >/dev/null 2>&1; then
+            echo "Release tag v${version} already exists." >&2
+            exit 1
+          fi
+          echo "version=${version}" >> "$GITHUB_OUTPUT"
 
-      - name: Upload workflow artifact
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: Release tooling tests
+        run: npm run test:release-tools
+
+      - name: Frontend unit tests
+        run: npm test
+
+      - name: Frontend coverage
+        run: npm run test:coverage
+
+      - name: TypeScript type check
+        run: npm run typecheck
+
+      - name: Angular production build
+        run: npm run frontend:build
+
+      - name: Rust tests
+        run: npm run rust:test
+
+      - name: Rust format check
+        run: npm run rust:fmt
+
+      - name: Rust check
+        run: npm run rust:check
+
+      - name: Tauri application build validation
+        run: npm run build:app
+
+  commit-version:
+    if: ${{ inputs.dry_run != true }}
+    needs: validate
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: write
+    outputs:
+      sha: ${{ steps.commit.outputs.sha }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.validate.outputs.base_sha }}
+          fetch-depth: 0
+
+      - name: Recreate validated version bump
+        run: node scripts/version.mjs "${{ inputs.bump }}"
+
+      - name: Commit and push version metadata
+        id: commit
+        env:
+          BRANCH: ${{ needs.validate.outputs.branch }}
+          EXPECTED_VERSION: ${{ needs.validate.outputs.version }}
+        run: |
+          actual_version="$(node -p "JSON.parse(require('node:fs').readFileSync('package.json', 'utf8')).version")"
+          if [[ "${actual_version}" != "${EXPECTED_VERSION}" ]]; then
+            echo "Version changed between validation and commit." >&2
+            exit 1
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add package.json package-lock.json src-tauri/tauri.conf.json src-tauri/Cargo.toml src-tauri/Cargo.lock
+          git diff --cached --check
+          git commit -m "chore: release v${actual_version}"
+          git push origin "HEAD:refs/heads/${BRANCH}"
+          echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+  build-artifacts:
+    needs: [validate, commit-version]
+    if: ${{ always() && needs.validate.result == 'success' && (inputs.dry_run == true || needs['commit-version'].result == 'success') }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+            artifact: Windows-x64
+          - os: ubuntu-22.04
+            target: x86_64-unknown-linux-gnu
+            artifact: Linux-x64
+          - os: macos-15-intel
+            target: x86_64-apple-darwin
+            artifact: macOS-x64
+          - os: macos-15
+            target: aarch64-apple-darwin
+            artifact: macOS-arm64
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.dry_run == true && needs.validate.outputs.base_sha || needs['commit-version'].outputs.sha }}
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Install Linux Tauri prerequisites
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential curl file libayatana-appindicator3-dev libssl-dev libwebkit2gtk-4.1-dev librsvg2-dev libxdo-dev patchelf wget
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: Apply version bump for dry run
+        if: inputs.dry_run
+        run: node scripts/version.mjs "${{ inputs.bump }}"
+
+      - name: Build native Tauri installer
+        run: npm run package:release -- --target ${{ matrix.target }}
+
+      - name: Upload release artifact
         uses: actions/upload-artifact@v4
         with:
-          name: MusicAssistant-Windows-x64
-          path: dist/portable/*.zip
+          name: MusicAssistant-${{ needs.validate.outputs.version }}-${{ matrix.artifact }}
+          path: dist/releases/*
+          if-no-files-found: error
+          retention-days: 7
 
-      - name: Create GitHub release
-        shell: pwsh
+  publish:
+    if: ${{ inputs.dry_run != true }}
+    needs: [validate, commit-version, build-artifacts]
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs['commit-version'].outputs.sha }}
+          fetch-depth: 0
+
+      - name: Download all required platform artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: MusicAssistant-${{ needs.validate.outputs.version }}-*
+          path: dist/releases
+          merge-multiple: true
+
+      - name: Verify complete artifact set
+        env:
+          VERSION: ${{ needs.validate.outputs.version }}
+        run: |
+          test -f "dist/releases/MusicAssistant-${VERSION}-Windows-x64-setup.exe"
+          test -f "dist/releases/MusicAssistant-${VERSION}-Linux-x64.deb"
+          test -f "dist/releases/MusicAssistant-${VERSION}-macOS-x64.dmg"
+          test -f "dist/releases/MusicAssistant-${VERSION}-macOS-arm64.dmg"
+
+      - name: Create tag and GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ needs.validate.outputs.version }}
+          TARGET_SHA: ${{ needs['commit-version'].outputs.sha }}
         run: |
-          gh release create "${{ github.ref_name }}" (Get-ChildItem dist/portable/*.zip).FullName --generate-notes
+          gh release create "v${VERSION}" dist/releases/* --target "${TARGET_SHA}" --generate-notes

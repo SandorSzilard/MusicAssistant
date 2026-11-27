@@ -39,36 +39,29 @@
 - disconnect warning;
 - sidecar persistence verified with real GX-100 hardware.
 
-## Remaining agent-assisted chapters
+## Chapter status
 
 ### Chapter 9 - Git baseline + behavior-preserving refactor
-- initialize local Git safely if not already initialized; no remote/push;
-- create a baseline commit before structural edits;
-- split oversized Angular root component/template/styles into coherent feature boundaries;
-- move analysis/playback/MIDI/Live/settings orchestration into appropriate services/helpers/components;
-- resolve stale scaffolding such as the obsolete `AnalysisService` message;
-- preserve current behavior and portable schemas.
+- Status: complete; behavior manually verified.
+- refactored the application shell and split Library, Practice, Live, MIDI, and Settings UI by feature;
+- extracted analysis, playback, state, and MIDI scheduling orchestration into focused services;
+- retained the existing persistence schemas and behavior contracts.
 
 ### Chapter 10 - Automated tests + quality gates
-- add Angular/TypeScript unit-test infrastructure;
-- add unit tests for extracted pure/business logic;
-- add deterministic Rust tests where useful;
-- add CI-friendly test scripts, formatting/type/build checks and sensible coverage reporting;
+- Status: complete; CI-quality checks and focused tests are in place.
+- Angular/Vitest unit testing, TypeScript checks, coverage, and Rust hashing tests are configured;
+- CI-ready frontend, Rust formatting, compilation, and build scripts are available;
 - hardware-dependent behavior remains mocked plus a manual hardware checklist.
 
 ### Chapter 11 - Regional analysis correction
-- select a waveform/time region;
-- re-analyze beats/chords/both only where requested;
-- merge results safely;
-- preserve manual edits according to explicit merge/conflict rules;
-- persist results and cover merge behavior with tests.
-- Status: implementation complete; manual Chapter 11 testing pending.
+- Status: complete; implementation and regression behavior manually verified.
+- regional beat/chord analysis, merge/remapping, persistence, and regression coverage are implemented;
+- manual chord edits are preserved according to the regional merge policy;
+- full-song analysis confirms before replacing manual chord edits.
 
 ### Chapter 12 - Hardening + release automation
-- long-playlist/missing-file/device-change/malformed-data robustness;
-- update docs and repository hygiene;
-- manual GitHub Actions release workflow (`workflow_dispatch`) with branch and patch/minor/major inputs;
-- synchronized version bump across npm/Tauri/Cargo metadata;
-- clean dependency install and all quality gates before release;
-- separate Windows/Linux/macOS builds/artifacts;
-- tag and GitHub Release creation only after successful validation.
+- Status: implementation ready for review; cross-platform runners and first workflow dry run require GitHub Actions validation.
+- adds focused import, analysis-worker, and MIDI device/listener failure-path coverage;
+- repository docs and generated/user data exclusions are synchronized;
+- the manual `workflow_dispatch` release workflow validates and synchronizes versions before building separate platform artifacts;
+- GitHub Release creation is gated on successful Windows, Linux, and macOS installer builds.

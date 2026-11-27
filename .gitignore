@@ -2,9 +2,29 @@
 node_modules/
 dist/
 .angular/
+coverage/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
 
 # Rust / Tauri
 src-tauri/target/
+src-tauri/gen/
+*.pdb
+*.ilk
+*.obj
+*.o
+*.so
+*.dylib
+*.dll
+*.exe
+*.msi
+*.deb
+*.rpm
+*.AppImage
+*.dmg
+*.app/
 
 # IDE
 .vscode/*
@@ -26,8 +46,13 @@ Thumbs.db
 *.musicassistant-playlist.json
 *.mp3
 *.wav
+*.flac
+*.m4a
 .cache/
 portable-build/
+diagnostics/
+*.trace
+*.prof
 
 # Logs
 *.log
@@ -37,3 +62,7 @@ build-feedback/
 .env
 .env.*
 !.env.example
+*.pem
+*.p12
+*.pfx
+*.key
